@@ -12,7 +12,7 @@ def load_knowledge(path):
 def _terms(text):
     s=text.lower().strip()
     terms=set(re.findall(r"[a-z0-9]+",s))
-    compact=re.sub(r"\\s+","",s)
+    compact=re.sub(r"\s+","",s)
     terms.update(compact[i:i+2] for i in range(max(0,len(compact)-1)))
     terms.update(compact)
     return {x for x in terms if len(x)>1}
