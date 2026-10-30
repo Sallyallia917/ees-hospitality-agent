@@ -1,2 +1,1 @@
-# ees-hospitality-agent
-hotel AI service 
+# EES Hospitality Agent 
