@@ -24,3 +24,20 @@ def test_safety_guidance():
 def test_no_cross_property_leakage():
     r=answer_question("标准几点入住？","OTHER-PROPERTY",KB)
     assert not r["grounded"] and r["needs_human"]
+
+
+def test_order_specific_room_type_does_not_use_faq():
+    r=answer_question("我预定的是什么房型？","DEMO-HOMESTAY-001",KB)
+    assert r["action"]=="order_lookup_unavailable"
+    assert not r["grounded"] and r["needs_human"]
+    assert r["knowledge_ids"]==[]
+    assert "不能根据通用 FAQ 推断房型" in r["answer"]
+
+def test_room_upgrade_policy_still_uses_faq():
+    r=answer_question("可以升级房型吗？","DEMO-HOMESTAY-001",KB)
+    assert "K020" in r["knowledge_ids"]
+    assert r["grounded"]
+
+def test_live_room_type_options_escalates():
+    r=answer_question("现在还有什么房型可选？","DEMO-HOMESTAY-001",KB)
+    assert r["action"]=="human_escalation" and not r["grounded"]
