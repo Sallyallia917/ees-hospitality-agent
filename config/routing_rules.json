@@ -1,47 +1,23 @@
 {
-  "version": "1.1",
-  "order_status": [
-    "UNKNOWN",
-    "UNVERIFIED",
-    "VERIFIED"
-  ],
-  "intents": {
-    "public_knowledge_inquiry": {
-      "order_dependency": "none",
-      "action": "rag_answer"
-    },
-    "booking_related_inquiry": {
-      "order_dependency": "required",
-      "action": "order_context_unavailable"
-    },
-    "realtime_availability": {
-      "order_dependency": "none",
-      "action": "human_escalation"
-    },
-    "transaction_request": {
-      "order_dependency": "optional",
-      "action": "transaction_handoff"
-    },
-    "service_request": {
-      "order_dependency": "optional",
-      "action": "service_handoff"
-    },
-    "complaint": {
-      "order_dependency": "optional",
-      "action": "human_escalation"
-    },
-    "safety_incident": {
-      "order_dependency": "none",
-      "action": "safety_guidance",
-      "priority": "highest"
-    }
+  "version":"1.2",
+  "classification":{"mode":"rules_plus_optional_llm","llm_is_advisory":true,"deterministic_decision_layer":true},
+  "order_status":["UNKNOWN","UNVERIFIED","VERIFIED"],
+  "intents":{
+    "public_knowledge_inquiry":{"order_dependency":"none","action":"rag_answer"},
+    "booking_related_inquiry":{"order_dependency":"required","action":"order_context_unavailable"},
+    "realtime_availability":{"order_dependency":"none","action":"human_escalation"},
+    "transaction_request":{"order_dependency":"required","action":"transaction_handoff"},
+    "service_request":{"order_dependency":"optional","action":"service_handoff"},
+    "complaint":{"order_dependency":"optional","action":"human_escalation"},
+    "safety_incident":{"order_dependency":"none","action":"safety_guidance","priority":"highest"}
   },
-  "principles": [
+  "principles":[
     "Classify business dependency before FAQ retrieval",
     "A user claim of having a booking is not authentication",
     "Booking entitlements differ from public facility policies",
     "Static knowledge cannot establish real-time availability",
     "Never claim an action succeeded without a successful tool result",
+    "LLM classification cannot override deterministic safety, authorization, transaction or data-access rules",
     "Safety incidents take priority"
   ]
 }
