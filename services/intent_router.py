@@ -1,8 +1,8 @@
 SAFETY_TERMS = ("燃气", "煤气", "起火", "冒火花", "电线冒烟")
 ORDER_CUES = ("我预订", "我预定", "我订", "我的订单", "订单里的", "预订的", "预定的")
 ORDER_FIELDS = ("房型", "房间", "床型", "早餐", "停车", "权益", "入住日期", "退房日期", "几晚", "人数")
-LIVE_TERMS = ("现在还有", "当前还有", "实时", "剩余房量", "还有空房", "现在有车位")
-TRANSACTION_TERMS = ("退款", "退钱", "取消订单", "取消预订", "修改订单", "改期", "换房", "改成", "更换房型", "帮我升级")
+LIVE_TERMS = ("现在还有", "当前还有", "今天还有", "实时", "剩余房量", "还有空房", "现在有车位")
+TRANSACTION_TERMS = ("退款", "退钱", "取消订单", "取消预订", "修改订单", "改期", "延迟退房", "换房", "改成", "更换房型", "帮我升级")
 COMPLAINT_TERMS = ("投诉", "赔偿", "差评", "没人处理", "不回复")
 SERVICE_TERMS = ("送", "加被子", "毛巾", "维修", "不制冷", "打不开门", "打扫")
 
@@ -31,7 +31,7 @@ def route_question(query, context=None):
         return _make("booking_related_inquiry", "required", status, deps, False, False, "medium",
           "order_tool_not_connected", "当前版本尚未接入订单查询工具，暂时无法读取订单详情。请通过原预订平台或门店工作人员核实。",
           "身份验证状态不能替代订单查询服务。")
-    if has(LIVE_TERMS):
+    if has(LIVE_TERMS) or ("现在" in text and ("车位" in text or "房" in text)) or ("今天" in text and "房" in text and "还有" in text):
         return _make("realtime_availability", "none", status, ["realtime_inventory"], False, True, "medium",
           "human_escalation", "这个问题需要实时房态或现场资源数据。当前版本没有连接相关系统，无法确认当前库存，请联系工作人员核实。",
           "实时库存不能由静态知识库回答。")
