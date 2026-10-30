@@ -1,0 +1,212 @@
+[
+  {
+    "case_id": "I01",
+    "input": "酒店几点入住？",
+    "expected_intent": "public_knowledge_inquiry",
+    "expected_action": "rag_answer",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I02",
+    "input": "酒店有停车场吗？",
+    "expected_intent": "public_knowledge_inquiry",
+    "expected_action": "rag_answer",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I03",
+    "input": "停车场在哪里？",
+    "expected_intent": "public_knowledge_inquiry",
+    "expected_action": "rag_answer",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I04",
+    "input": "早餐几点开始？",
+    "expected_intent": "public_knowledge_inquiry",
+    "expected_action": "rag_answer",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I05",
+    "input": "房间有吹风机吗？",
+    "expected_intent": "public_knowledge_inquiry",
+    "expected_action": "rag_answer",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I06",
+    "input": "WiFi密码是什么？",
+    "expected_intent": "public_knowledge_inquiry",
+    "expected_action": "rag_answer",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I07",
+    "input": "我预订的是什么房型？",
+    "expected_intent": "booking_related_inquiry",
+    "expected_action": "order_context_unavailable",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "I08",
+    "input": "我预定的房型有停车位吗？",
+    "expected_intent": "booking_related_inquiry",
+    "expected_action": "order_context_unavailable",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "I09",
+    "input": "我订单里包含早餐吗？",
+    "expected_intent": "booking_related_inquiry",
+    "expected_action": "order_context_unavailable",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "I10",
+    "input": "我订了几晚？",
+    "expected_intent": "booking_related_inquiry",
+    "expected_action": "order_context_unavailable",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "I11",
+    "input": "我的订单入住日期是哪天？",
+    "expected_intent": "booking_related_inquiry",
+    "expected_action": "order_context_unavailable",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "I12",
+    "input": "我订的是大床还是双床？",
+    "expected_intent": "booking_related_inquiry",
+    "expected_action": "order_context_unavailable",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "I13",
+    "input": "我还没预订，停车收费吗？",
+    "expected_intent": "public_knowledge_inquiry",
+    "expected_action": "rag_answer",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I14",
+    "input": "现在停车场还有车位吗？",
+    "expected_intent": "realtime_availability",
+    "expected_action": "human_escalation",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I15",
+    "input": "今天还有双床房吗？",
+    "expected_intent": "realtime_availability",
+    "expected_action": "human_escalation",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I16",
+    "input": "现在还有空房吗？",
+    "expected_intent": "realtime_availability",
+    "expected_action": "human_escalation",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I17",
+    "input": "帮我取消订单",
+    "expected_intent": "transaction_request",
+    "expected_action": "transaction_handoff",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "I18",
+    "input": "现在给我退款",
+    "expected_intent": "transaction_request",
+    "expected_action": "transaction_handoff",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "I19",
+    "input": "帮我把大床房改成双床房",
+    "expected_intent": "transaction_request",
+    "expected_action": "transaction_handoff",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "I20",
+    "input": "我想延迟退房",
+    "expected_intent": "transaction_request",
+    "expected_action": "transaction_handoff",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "I21",
+    "input": "送两条毛巾",
+    "expected_intent": "service_request",
+    "expected_action": "service_handoff",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "I22",
+    "input": "空调坏了不制冷",
+    "expected_intent": "service_request",
+    "expected_action": "service_handoff",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "I23",
+    "input": "帮我加一床被子",
+    "expected_intent": "service_request",
+    "expected_action": "service_handoff",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "I24",
+    "input": "我要投诉，客服一直不回复",
+    "expected_intent": "complaint",
+    "expected_action": "human_escalation",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "I25",
+    "input": "我要求赔偿",
+    "expected_intent": "complaint",
+    "expected_action": "human_escalation",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "I26",
+    "input": "闻到煤气味怎么办",
+    "expected_intent": "safety_incident",
+    "expected_action": "safety_guidance",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I27",
+    "input": "插座突然冒火花",
+    "expected_intent": "safety_incident",
+    "expected_action": "safety_guidance",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "I28",
+    "input": "我预订的房间有早餐吗？早餐几点开始？",
+    "expected_intent": "booking_related_inquiry",
+    "expected_action": "order_context_unavailable",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "I29",
+    "input": "我预订的房型有停车位吗？现在停车场还有空位吗？",
+    "expected_intent": "booking_related_inquiry",
+    "expected_action": "order_context_unavailable",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "I30",
+    "input": "房卡打不开门",
+    "expected_intent": "service_request",
+    "expected_action": "service_handoff",
+    "expected_order_dependency": "optional"
+  }
+]
