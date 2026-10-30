@@ -9,7 +9,7 @@ ROOT=Path(__file__).parent
 load_dotenv(ROOT/".env")
 st.set_page_config(page_title="EES 酒旅知识助手",page_icon="🏡")
 st.title("EES 酒旅知识助手")
-st.caption("MVP 1 · 模拟门店与模拟政策，不连接真实订单或服务系统")
+st.caption("MVP 1.1 · 业务边界识别与回复路由 · 模拟门店与模拟政策，不连接真实订单或服务系统")
 kb=load_knowledge(ROOT/"knowledge"/"property_faq.json")
 with st.sidebar:
  property_id=st.selectbox("门店",["DEMO-HOMESTAY-001"])
