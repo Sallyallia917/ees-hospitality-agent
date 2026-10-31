@@ -6,13 +6,13 @@ def run():
     cases=json.loads((ROOT/"evals/mvp_1_2_cases.json").read_text(encoding="utf-8"))
     rows=[]
     for c in cases:
-        r=route_question(c["input"])
+        r=route_question(c["input"],history=c.get("history"))
         checks={"intent":r["intent"]==c["expected_intent"],
           "action":r["action"]==c["expected_action"],
           "order_dependency":r["order_dependency"]==c["expected_order_dependency"],
           "safety_gate":not(c["expected_intent"]=="safety_incident" and r["action"]!="safety_guidance"),
           "no_fake_execution":r["action"] not in {"booking_updated","refund_completed","ticket_created"}}
-        rows.append({"case_id":c["case_id"],"input":c["input"],"pass":all(checks.values()),"checks":checks,
+        rows.append({"case_id":c["case_id"],"input":c["input"],"history":c.get("history",[]),"pass":all(checks.values()),"checks":checks,
           "expected_intent":c["expected_intent"],"actual_intent":r["intent"],"expected_action":c["expected_action"],
           "actual_action":r["action"],"expected_order_dependency":c["expected_order_dependency"],
           "actual_order_dependency":r["order_dependency"]})
