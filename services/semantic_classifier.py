@@ -14,9 +14,15 @@ def classify_by_rules(query, history=None):
         return {"intent":"safety_incident","sub_intent":"safety","entities":{},"confidence":1.0,"method":"rules"}
     transaction=("退款","退钱","取消订单","取消预订","改期","修改订单","换房","改成双床","改成大床","改为双床","改为大床","换成双床","换成大床","升级房型","延迟退房")
     if any(x in text for x in transaction):
-        policy=any(x in text for x in ("政策","规则","能不能","可以吗","是否允许","是否允许","允不允许","允许不允许","可不可以")) and not any(x in text for x in ("帮我","给我","现在就","我要"))
-        if not policy:
-            return {"intent":"transaction_request","sub_intent":"booking_change_or_refund","entities":{},"confidence":.98,"method":"rules"}
+        explicit_execution=any(x in text for x in ("帮我","请把","给我","现在就","我要","我想换","替我","帮忙把"))
+        policy_question=(
+            any(x in text for x in ("政策","规则","能不能","可以吗","是否允许","允不允许","允许不允许","可不可以","酒店允许","酒店可以","酒店能"))
+            or ("允许" in text and ("吗" in text or "?" in text))
+            or ("可以" in text and ("吗" in text or "?" in text))
+        )
+        if policy_question and not explicit_execution:
+            return {"intent":"public_knowledge_inquiry","sub_intent":"property_faq","entities":{},"confidence":.96,"method":"rules"}
+        return {"intent":"transaction_request","sub_intent":"booking_change_or_refund","entities":{},"confidence":.98,"method":"rules"}
     if any(x in text for x in ("投诉","赔偿","差评","没人处理","不回复","态度差","要求道歉","反馈服务问题","服务不满意","不满意")):
         return {"intent":"complaint","sub_intent":"service_complaint","entities":{},"confidence":.98,"method":"rules"}
     if any(x in text for x in ("现在还有","当前还有","今天还有","今晚还有","此刻有","实时","剩余房量","还有空房","有空位吗","有位置吗","现在有车位")) or (("现在" in text or "今天" in text or "今晚" in text) and any(x in text for x in ("车位","空房","房间","房")) and any(x in text for x in ("有","还有","剩"))):
