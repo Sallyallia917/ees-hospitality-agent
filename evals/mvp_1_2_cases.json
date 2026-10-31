@@ -61,4 +61,9 @@
 {"case_id":"E060","input":"房间里有煤气味","expected_intent":"safety_incident","expected_action":"safety_guidance","expected_order_dependency":"none"},
 {"case_id":"E061","input":"电线在冒烟","expected_intent":"safety_incident","expected_action":"safety_guidance","expected_order_dependency":"none"},
 {"case_id":"E062","input":"插座有火花，怎么办？","expected_intent":"safety_incident","expected_action":"safety_guidance","expected_order_dependency":"none"}
+,
+{"case_id":"E063","input":"帮我把大床房改为双床房","expected_intent":"transaction_request","expected_action":"transaction_handoff","expected_order_dependency":"required"},
+{"case_id":"E064","input":"请把房间改为双床","expected_intent":"transaction_request","expected_action":"transaction_handoff","expected_order_dependency":"required"},
+{"case_id":"E065","input":"我想换成大床房","expected_intent":"transaction_request","expected_action":"transaction_handoff","expected_order_dependency":"required"},
+{"case_id":"E066","input":"酒店是否允许把大床改成双床？","expected_intent":"public_knowledge_inquiry","expected_action":"rag_answer","expected_order_dependency":"none"}
 ]
