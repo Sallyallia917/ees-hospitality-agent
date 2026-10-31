@@ -1,7 +1,7 @@
-name: MVP 1 checks
+name: MVP 1.2 checks
 on:
   push:
-    branches: [main]
+    branches: [main, "feat/**"]
   pull_request:
     branches: [main]
 jobs:
@@ -18,3 +18,7 @@ jobs:
         run: pytest -q
       - name: RAG evaluation
         run: python -m evals.run_evaluation
+      - name: MVP 1.1 routing regression
+        run: python -m evals.run_routing_evaluation
+      - name: MVP 1.2 hybrid routing evaluation
+        run: python -m evals.run_mvp_1_2_evaluation
