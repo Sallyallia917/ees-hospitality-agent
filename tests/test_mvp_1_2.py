@@ -110,3 +110,41 @@ def test_room_change_using_huanwei_is_transaction(q):
     r=route_question(q,history=[{"intent":"public_knowledge_inquiry"}])
     assert r["intent"]=="transaction_request"
     assert r["action"]=="transaction_handoff"
+
+def test_mvp_1_2_evaluation_runner_passes_case_history(tmp_path, monkeypatch):
+    import json
+    from evals import run_mvp_1_2_evaluation as evaluator
+
+    cases = [{
+        "case_id": "E070",
+        "input": "那帮我把大床房换为双床房",
+        "history": [{"intent": "public_knowledge_inquiry", "question": "酒店允许换房型吗"}],
+        "expected_intent": "transaction_request",
+        "expected_action": "transaction_handoff",
+        "expected_order_dependency": "required",
+    }]
+    (tmp_path / "evals").mkdir()
+    (tmp_path / "reports").mkdir()
+    (tmp_path / "evals" / "mvp_1_2_cases.json").write_text(
+        json.dumps(cases, ensure_ascii=False), encoding="utf-8"
+    )
+    monkeypatch.setattr(evaluator, "ROOT", tmp_path)
+    seen = {}
+
+    def fake_route_question(query, history=None):
+        seen["query"] = query
+        seen["history"] = history
+        return {
+            "intent": "transaction_request",
+            "action": "transaction_handoff",
+            "order_dependency": "required",
+        }
+
+    monkeypatch.setattr(evaluator, "route_question", fake_route_question)
+    report = evaluator.run()
+
+    assert seen["query"] == cases[0]["input"]
+    assert seen["history"] == cases[0]["history"]
+    assert report["total"] == 1
+    assert report["passed"] == 1
+    assert report["failed"] == 0
