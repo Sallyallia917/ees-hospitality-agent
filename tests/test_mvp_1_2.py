@@ -49,3 +49,21 @@ def test_verified_context_does_not_fake_order_lookup():
 def test_classifier_metadata_is_exposed_for_audit():
     r=route_question("酒店几点入住？")
     assert r["classification_method"] in {"rules","llm"} and r["sub_intent"]
+
+
+@pytest.mark.parametrize("q",[
+    "帮我把大床房改为双床房",
+    "请把房间改为双床",
+    "我想换成大床房",
+    "把我的大床房改成双床房"
+])
+def test_room_type_change_requests_are_transaction_handoff(q):
+    r=route_question(q)
+    assert r["intent"]=="transaction_request"
+    assert r["action"]=="transaction_handoff"
+    assert r["order_dependency"]=="required"
+
+def test_room_type_change_policy_question_can_use_public_knowledge(q="酒店是否允许把大床改成双床？"):
+    r=route_question(q)
+    assert r["intent"]=="public_knowledge_inquiry"
+    assert r["action"]=="rag_answer"
