@@ -67,3 +67,25 @@ def test_room_type_change_policy_question_can_use_public_knowledge(q="酒店是�
     r=route_question(q)
     assert r["intent"]=="public_knowledge_inquiry"
     assert r["action"]=="rag_answer"
+
+
+@pytest.mark.parametrize("q",[
+    "酒店允许把大床房换成双床吗",
+    "酒店可以把大床房换成双床吗？",
+    "大床房能不能改成双床房？",
+    "酒店是否允许把大床改成双床？"
+])
+def test_room_change_policy_questions_are_public_knowledge(q):
+    r=route_question(q)
+    assert r["intent"]=="public_knowledge_inquiry"
+    assert r["action"]=="rag_answer"
+
+@pytest.mark.parametrize("q",[
+    "帮我把大床房改为双床房",
+    "请把房间换成双床",
+    "我想换成大床房"
+])
+def test_explicit_room_change_execution_stays_transaction_handoff(q):
+    r=route_question(q)
+    assert r["intent"]=="transaction_request"
+    assert r["action"]=="transaction_handoff"
