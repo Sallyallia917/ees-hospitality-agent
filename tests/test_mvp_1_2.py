@@ -89,3 +89,24 @@ def test_explicit_room_change_execution_stays_transaction_handoff(q):
     r=route_question(q)
     assert r["intent"]=="transaction_request"
     assert r["action"]=="transaction_handoff"
+
+
+def test_current_turn_transaction_overrides_previous_public_faq_context():
+    r=route_question(
+        "那帮我把大床房换为双床房",
+        history=[{"intent":"public_knowledge_inquiry","sub_intent":"property_faq","question":"酒店允许换房型吗"}]
+    )
+    assert r["intent"]=="transaction_request"
+    assert r["sub_intent"]=="booking_change_or_refund"
+    assert r["action"]=="transaction_handoff"
+    assert r["order_dependency"]=="required"
+
+@pytest.mark.parametrize("q",[
+    "那帮我把大床房换为双床房",
+    "帮我把大床房换为双床房",
+    "那请把房间换为双床房"
+])
+def test_room_change_using_huanwei_is_transaction(q):
+    r=route_question(q,history=[{"intent":"public_knowledge_inquiry"}])
+    assert r["intent"]=="transaction_request"
+    assert r["action"]=="transaction_handoff"

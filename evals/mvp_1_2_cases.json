@@ -70,4 +70,7 @@
 {"case_id":"E067","input":"酒店允许把大床房换成双床吗","expected_intent":"public_knowledge_inquiry","expected_action":"rag_answer","expected_order_dependency":"none"},
 {"case_id":"E068","input":"酒店可以把大床房换成双床吗？","expected_intent":"public_knowledge_inquiry","expected_action":"rag_answer","expected_order_dependency":"none"},
 {"case_id":"E069","input":"大床房能不能改成双床房？","expected_intent":"public_knowledge_inquiry","expected_action":"rag_answer","expected_order_dependency":"none"}
+,
+{"case_id":"E070","input":"那帮我把大床房换为双床房","history":[{"intent":"public_knowledge_inquiry","question":"酒店允许换房型吗"}],"expected_intent":"transaction_request","expected_action":"transaction_handoff","expected_order_dependency":"required"},
+{"case_id":"E071","input":"帮我把大床房换为双床房","expected_intent":"transaction_request","expected_action":"transaction_handoff","expected_order_dependency":"required"}
 ]

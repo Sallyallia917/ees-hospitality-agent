@@ -12,7 +12,7 @@ def classify_by_rules(query, history=None):
     no_booking=any(x in text for x in ("还没预订","还没有预订","没有预订","尚未预订","没下单","未下单","还没订","没有订房"))
     if any(x in text for x in ("燃气","煤气","起火","冒火花","火花","电线冒烟","电线在冒烟","漏电","有人受伤","火灾")):
         return {"intent":"safety_incident","sub_intent":"safety","entities":{},"confidence":1.0,"method":"rules"}
-    transaction=("退款","退钱","取消订单","取消预订","改期","修改订单","换房","改成双床","改成大床","改为双床","改为大床","换成双床","换成大床","升级房型","延迟退房")
+    transaction=("退款","退钱","取消订单","取消预订","改期","修改订单","换房","换为双床","换为大床","换成双床房","换成大床房","换为双床房","换为大床房","改成双床","改成大床","改为双床","改为大床","换成双床","换成大床","换为双床","换为大床","换为双床房","换为大床房","升级房型","延迟退房")
     if any(x in text for x in transaction):
         explicit_execution=any(x in text for x in ("帮我","请把","给我","现在就","我要","我想换","替我","帮忙把"))
         policy_question=(
