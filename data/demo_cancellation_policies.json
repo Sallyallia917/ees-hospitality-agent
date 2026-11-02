@@ -1,0 +1,19 @@
+[
+  {
+    "policy_id":"POLICY-REFUND-001-V1","version":1,"timezone":"Asia/Shanghai",
+    "effective_from":"2026-01-01T00:00:00+08:00","effective_to":null,
+    "windows":[
+      {"min_hours_before_checkin_exclusive":168,"max_hours_before_checkin_inclusive":null,"fee_type":"none","fee_rate":0,"label":"距入住时间超过168小时：免费取消"},
+      {"min_hours_before_checkin_exclusive":72,"max_hours_before_checkin_inclusive":168,"fee_type":"percentage","fee_rate":0.30,"label":"距入住时间超过72小时且不超过168小时：收取订单金额30%"},
+      {"min_hours_before_checkin_exclusive":null,"max_hours_before_checkin_inclusive":72,"fee_type":"non_refundable","fee_rate":null,"label":"距入住时间不超过72小时：不可取消"}
+    ]
+  },
+  {
+    "policy_id":"POLICY-REFUND-002-V1","version":1,"timezone":"Asia/Shanghai",
+    "effective_from":"2026-01-01T00:00:00+08:00","effective_to":null,
+    "windows":[
+      {"min_hours_before_checkin_exclusive":72,"max_hours_before_checkin_inclusive":null,"fee_type":"none","fee_rate":0,"label":"距入住时间超过72小时：免费取消"},
+      {"min_hours_before_checkin_exclusive":null,"max_hours_before_checkin_inclusive":72,"fee_type":"non_refundable","fee_rate":null,"label":"距入住时间不超过72小时：不可取消"}
+    ]
+  }
+]
