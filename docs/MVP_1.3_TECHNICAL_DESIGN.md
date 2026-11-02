@@ -113,14 +113,14 @@ Booking 通过 property_id 关联 property。房源属性采用可扩展结构�
   "effective_from": "2026-01-01T00:00:00+08:00",
   "effective_to": null,
   "windows": [
-    {"cutoff_before_checkin_days_min": 7, "cutoff_before_checkin_days_max": null, "fee_type": "none", "fee_rate": 0, "label": "入住前7天及更早：免费取消"},
-    {"cutoff_before_checkin_days_min": 3, "cutoff_before_checkin_days_max": 7, "fee_type": "percentage", "fee_rate": 0.30, "label": "入住前3至7天：收取订单金额30%"},
-    {"cutoff_before_checkin_days_min": 0, "cutoff_before_checkin_days_max": 3, "fee_type": "non_refundable", "fee_rate": null, "label": "入住前3天内：不可取消"}
+    {"min_hours_before_checkin_exclusive": 168, "max_hours_before_checkin_inclusive": null, "fee_type": "none", "fee_rate": 0, "label": "距入住时间超过168小时：免费取消"},
+    {"min_hours_before_checkin_exclusive": 72, "max_hours_before_checkin_inclusive": 168, "fee_type": "percentage", "fee_rate": 0.30, "label": "距入住时间超过72小时且不超过168小时：收取订单金额30%"},
+    {"min_hours_before_checkin_exclusive": null, "max_hours_before_checkin_inclusive": 72, "fee_type": "non_refundable", "fee_rate": null, "label": "距入住时间不超过72小时：不可取消"}
   ]
 }
 ```
 
-示例仅用于说明数据契约，实际边界必须用无歧义的时间戳/区间端点表达，并定义端点是否包含；不得直接用含糊的自然语言区间作为计算依据。规则按订单绑定的 policy_id/version 或下单时快照保存，保证历史订单可追溯。必须显式存储时区，处理夏令时/当地日期时不得默认服务器时区。
+示例仅用于说明数据契约：按距离入住时刻的小时数定义互斥区间，168小时边界归入30%区间，72小时边界归入不可取消区间，避免重叠或空档。生产规则应使用明确时间戳/区间端点并定义端点包含关系；不得直接用含糊自然语言作为计算依据。规则按订单绑定的 policy_id/version 或下单时快照保存，保证历史订单可追溯。必须显式存储时区，处理夏令时/当地日期时不得默认服务器时区。
 
 MVP 1.3 只读取并展示规则，不执行取消/退款，也不计算实际退款金额。未来如增加费用估算，需要订单实付金额、币种、渠道规则、规则版本和精确时间边界，并将输出标为估算值。
 
