@@ -33,7 +33,11 @@ class BookingService:
         if set(filters) - ALLOWED_FILTERS:
             self._audit(principal, None, "search_bookings", "invalid_filters")
             return {"status": "invalid_filters", "matched_bookings": [], "audit_id": self.audit_events[-1]["audit_id"]}
-        rows = self._owned_bookings(principal)
+        try:
+            rows = self._owned_bookings(principal)
+        except Exception:
+            audit_id = self._audit(principal, None, "search_bookings", "tool_error")
+            return {"status": "tool_error", "matched_bookings": [], "audit_id": audit_id}
         if "check_in_from" in filters:
             rows = [b for b in rows if b.get("check_in","")[:10] >= str(filters["check_in_from"])]
         if "check_in_to" in filters:
@@ -58,13 +62,21 @@ class BookingService:
             audit_id = self._audit(principal, booking_id, "get_booking", "unauthenticated")
             return {"status": "unauthenticated", "booking": None, "audit_id": audit_id}
         # Do not reveal whether an ID exists but belongs to another customer.
-        booking = next((b for b in self.repository.list_bookings()
-                        if b.get("booking_id") == booking_id and b.get("customer_id") == principal.customer_id), None)
+        try:
+            booking = next((b for b in self.repository.list_bookings()
+                            if b.get("booking_id") == booking_id and b.get("customer_id") == principal.customer_id), None)
+        except Exception:
+            audit_id = self._audit(principal, booking_id, "get_booking", "tool_error")
+            return {"status": "tool_error", "booking": None, "audit_id": audit_id}
         if not booking:
             audit_id = self._audit(principal, booking_id, "get_booking", "not_found_or_forbidden")
             return {"status": "not_found", "booking": None, "audit_id": audit_id}
-        prop = self.repository.get_property(booking.get("property_id"))
-        policy = self.repository.get_policy(booking.get("cancellation_policy_id"))
+        try:
+            prop = self.repository.get_property(booking.get("property_id"))
+            policy = self.repository.get_policy(booking.get("cancellation_policy_id"))
+        except Exception:
+            audit_id = self._audit(principal, booking_id, "get_booking_detail", "tool_error")
+            return {"status": "tool_error", "booking": None, "audit_id": audit_id}
         missing = []
         if not policy:
             missing.append("cancellation_policy")
