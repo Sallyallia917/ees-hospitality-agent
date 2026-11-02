@@ -1,0 +1,4 @@
+[
+  {"property_id":"DEMO-HOMESTAY-001","property_name":"示例山居","property_type":"homestay","location":{"city":"演示城市","address_display":"演示地址·云岭路8号"},"facilities":["无线网络","停车场","公共休息区"],"check_in_instructions":"到店后联系演示工作人员","service_policy_refs":["POLICY-CHECKIN-001"]},
+  {"property_id":"DEMO-HOTEL-002","property_name":"示例城市酒店","property_type":"hotel","location":{"city":"演示城市","address_display":"演示地址·中央大道18号"},"facilities":["无线网络","电梯","早餐厅"],"check_in_instructions":"前台办理入住","service_policy_refs":["POLICY-CHECKIN-002"]}
+]
