@@ -54,8 +54,8 @@ def test_search_defaults_to_at_most_three_owned_bookings():
 def test_search_can_filter_by_room_type_and_date():
     service = BookingService()
     result = service.search_my_bookings(principal(), {"room_type":"双床"})
-    assert len(result["matched_bookings"]) == 1
-    assert result["matched_bookings"][0]["booking_id"] == "DEMO-BOOKING-1003"
+    assert len(result["matched_bookings"]) == 2
+    assert {x["booking_id"] for x in result["matched_bookings"]} == {"DEMO-BOOKING-1002", "DEMO-BOOKING-1003"}
 
 def test_unknown_filter_is_rejected():
     result = BookingService().search_my_bookings(principal(), {"sql":"select *"})
