@@ -116,28 +116,28 @@
     "input": "帮我取消订单",
     "expected_intent": "transaction_request",
     "expected_action": "transaction_handoff",
-    "expected_order_dependency": "optional"
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "I18",
     "input": "现在给我退款",
     "expected_intent": "transaction_request",
     "expected_action": "transaction_handoff",
-    "expected_order_dependency": "optional"
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "I19",
     "input": "帮我把大床房改成双床房",
     "expected_intent": "transaction_request",
     "expected_action": "transaction_handoff",
-    "expected_order_dependency": "optional"
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "I20",
     "input": "我想延迟退房",
     "expected_intent": "transaction_request",
     "expected_action": "transaction_handoff",
-    "expected_order_dependency": "optional"
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "I21",
