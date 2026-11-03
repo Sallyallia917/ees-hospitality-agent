@@ -18,3 +18,6 @@ def run():
  return report
 if __name__=="__main__":
  r=run(); print({k:r[k] for k in ("total","passed","failed")})
+ for case in json.loads((ROOT/"reports/rag_evaluation.json").read_text(encoding="utf-8"))["cases"]:
+  if not case["pass"]: print(f'FAILED {case["case_id"]}: action={case["actual_action"]}; retrieved={case["actual_ids"]}')
+ raise SystemExit(1 if r["failed"] else 0)
