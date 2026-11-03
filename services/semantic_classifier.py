@@ -28,12 +28,12 @@ def classify_by_rules(query, history=None):
         return {"intent":"transaction_request","sub_intent":"booking_change_or_refund","entities":{},"confidence":.98,"method":"rules"}
     if any(x in text for x in ("投诉","赔偿","差评","没人处理","不回复","态度差","要求道歉","反馈服务问题","服务不满意","不满意","没回应","未回应","一直没回应")):
         return {"intent":"complaint","sub_intent":"service_complaint","entities":{},"confidence":.98,"method":"rules"}
-    if any(x in text for x in ("现在还有","当前还有","今天还有","今晚还有","此刻有","实时","剩余房量","还有空房","有空位吗","有位置吗","现在有车位")) or (("现在" in text or "今天" in text or "今晚" in text) and any(x in text for x in ("车位","空房","房间","房")) and any(x in text for x in ("有","还有","剩"))):
-        return {"intent":"realtime_availability","sub_intent":"inventory","entities":{},"confidence":.98,"method":"rules"}
     order_cues=("我预订","我预定","我订","我的订单","订单里的","预订的","预定的","我之前订","我之前下的单","我这单","订单有没有","订房时选","这笔订单","该订单")
     order_fields=("房型","房间","床型","早餐","含早","停车","权益","入住日期","退房日期","几晚","人数","订单","哪种床","大床","双床")
     if not no_booking and any(x in text for x in order_cues) and any(x in text for x in order_fields):
         return {"intent":"booking_related_inquiry","sub_intent":"booking_detail_or_entitlement","entities":{},"confidence":.97,"method":"rules"}
+    if any(x in text for x in ("现在还有","当前还有","今天还有","今晚还有","此刻有","实时","剩余房量","还有空房","有空位吗","有位置吗","现在有车位")) or (("现在" in text or "今天" in text or "今晚" in text) and any(x in text for x in ("车位","空房","房间","房")) and any(x in text for x in ("有","还有","剩"))):
+        return {"intent":"realtime_availability","sub_intent":"inventory","entities":{},"confidence":.98,"method":"rules"}
     if history and (text.startswith("那") or any(x in text for x in ("它呢","这个呢","那呢"))):
         prev=history[-1] if isinstance(history[-1],dict) else {}
         if prev.get("intent")=="booking_related_inquiry":
