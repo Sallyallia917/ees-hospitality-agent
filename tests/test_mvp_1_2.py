@@ -8,7 +8,7 @@ from services.intent_router import route_question
 def test_personal_booking_queries_never_enter_rag(q):
     r=route_question(q)
     assert r["intent"]=="booking_related_inquiry"
-    assert r["action"]=="order_context_unavailable"
+    assert r["action"]=="booking_lookup"
     assert r["knowledge_required"] is False
 
 @pytest.mark.parametrize("q",[
@@ -35,16 +35,16 @@ def test_safety_overrides_other_topics(q):
 
 def test_contextual_booking_followup_inherits_booking_intent_but_not_auth():
     r=route_question("那停车收费吗？",history=[{"intent":"booking_related_inquiry"}])
-    assert r["intent"]=="booking_related_inquiry" and r["action"]=="order_context_unavailable"
+    assert r["intent"]=="booking_related_inquiry" and r["action"]=="booking_lookup"
 
 def test_contextual_public_followup_remains_public_faq():
     assert route_question("那收费吗？",history=[{"intent":"public_knowledge_inquiry"}])["action"]=="rag_answer"
 
 def test_combined_booking_and_public_question_is_conservatively_blocked():
-    assert route_question("我预订的房间有早餐吗？早餐几点开始？")["action"]=="order_context_unavailable"
+    assert route_question("我预订的房间有早餐吗？早餐几点开始？")["action"]=="booking_lookup"
 
 def test_verified_context_does_not_fake_order_lookup():
-    assert route_question("我预订的是什么房型？",{"order_status":"VERIFIED"})["action"]=="order_tool_not_connected"
+    assert route_question("我预订的是什么房型？",{"order_status":"VERIFIED"})["action"]=="booking_lookup"
 
 def test_classifier_metadata_is_exposed_for_audit():
     r=route_question("酒店几点入住？")

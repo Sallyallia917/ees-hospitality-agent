@@ -8,7 +8,7 @@ def run():
  cases=json.loads((ROOT/"evals"/"rag_cases.json").read_text(encoding="utf-8")); rows=[]
  for c in cases:
   a=answer_question(c["input"],"DEMO-HOMESTAY-001",kb)
-  retrieval=(c["expected"] in a["knowledge_ids"]) if c["expected"] else a["action"]=="human_escalation"
+  retrieval=(c["expected"] in a["knowledge_ids"]) if c["expected"] else not a["knowledge_ids"]
   ok=retrieval and a["action"]==c["action"]
   rows.append({"case_id":c["case_id"],"pass":ok,"actual_ids":a["knowledge_ids"],"actual_action":a["action"],"answer":a["answer"]})
  report={"total":len(rows),"passed":sum(x["pass"] for x in rows),"failed":sum(not x["pass"] for x in rows),"cases":rows}
@@ -18,3 +18,6 @@ def run():
  return report
 if __name__=="__main__":
  r=run(); print({k:r[k] for k in ("total","passed","failed")})
+ for case in json.loads((ROOT/"reports/rag_evaluation.json").read_text(encoding="utf-8"))["cases"]:
+  if not case["pass"]: print(f'FAILED {case["case_id"]}: action={case["actual_action"]}; retrieved={case["actual_ids"]}')
+ raise SystemExit(1 if r["failed"] else 0)

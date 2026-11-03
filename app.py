@@ -11,6 +11,7 @@ from services.retrieval import load_knowledge
 from services.rag_service import answer_question, generate_with_optional_llm
 from services.intent_router import route_question
 from services.context_manager import default_context
+from services.conversation_orchestrator import ConversationOrchestrator
 
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
@@ -28,11 +29,16 @@ if "ees_history" not in st.session_state:
     st.session_state.ees_history = []
 if "ees_booking_service" not in st.session_state:
     st.session_state.ees_booking_service = BookingService()
+if "ees_conversation_orchestrator" not in st.session_state:
+    st.session_state.ees_conversation_orchestrator = ConversationOrchestrator(
+        st.session_state.ees_booking_service
+    )
 
 def clear_authentication():
     st.session_state.pop("ees_principal", None)
     st.session_state.pop("ees_booking_results", None)
     st.session_state.pop("ees_selected_booking", None)
+    st.session_state.ees_context.pop("active_booking_id", None)
 
 principal = st.session_state.get("ees_principal")
 if principal is not None and not principal_is_valid(principal):
@@ -52,6 +58,8 @@ with st.sidebar:
             if auth["ok"]:
                 st.session_state.ees_principal = auth["principal"]
                 st.session_state.pop("ees_booking_results", None)
+                st.session_state.ees_context.pop("active_booking_id", None)
+                st.session_state.pop("ees_qa_result", None)
                 st.success("演示身份验证成功。")
                 st.rerun()
             else:
@@ -75,15 +83,31 @@ with tab_qa:
     st.caption(f"知识条目：{len(kb)}")
     q = st.text_input("请输入住客问题", placeholder="例如：入住时间是什么？", key="qa_question")
     if st.button("提交问题", type="primary", disabled=not q.strip(), key="qa_submit"):
-        route = route_question(q, st.session_state.ees_context, st.session_state.ees_history)
-        if route["action"] == "rag_answer":
-            result = generate_with_optional_llm(q, answer_question(q, property_id, kb))
-        else:
+        conversational = st.session_state.ees_conversation_orchestrator.handle_booking_query(
+            q, principal=st.session_state.get("ees_principal"),
+            history=st.session_state.ees_history, context=st.session_state.ees_context
+        )
+        if conversational["handled"]:
+            route = conversational["route"]
             result = {
-                "answer": route["response"], "knowledge_ids": [], "sources": [],
-                "grounded": False, "needs_human": route["needs_human"],
-                "reason": route["reason"], "action": route["action"],
+                "answer": conversational["answer"], "knowledge_ids": [], "sources": [],
+                "grounded": False, "needs_human": conversational["needs_human"],
+                "reason": route["reason"], "action": conversational["action"],
+                "booking_status": conversational["status"],
+                "booking_data": conversational["data"],
+                "needs_clarification": conversational["needs_clarification"],
+                "audit_id": conversational["audit_id"],
             }
+        else:
+            route = conversational["route"]
+            if route["action"] == "rag_answer":
+                result = generate_with_optional_llm(q, answer_question(q, property_id, kb))
+            else:
+                result = {
+                    "answer": route["response"], "knowledge_ids": [], "sources": [],
+                    "grounded": False, "needs_human": route["needs_human"],
+                    "reason": route["reason"], "action": route["action"],
+                }
         st.session_state.ees_qa_result = {"route": route, "result": result}
         st.session_state.ees_history.append({
             "intent": route["intent"], "sub_intent": route["sub_intent"], "question": q
@@ -105,6 +129,14 @@ with tab_qa:
                 "order_status", "data_dependencies", "knowledge_required",
                 "realtime_data_required", "risk_level", "action"
             )})
+        if result.get("booking_data"):
+            data = result["booking_data"]
+            st.markdown("#### 已验证的订单信息")
+            st.json(data.get("booking") or {})
+            if data.get("missing_fields"):
+                st.warning("部分关联数据缺失：" + "、".join(data["missing_fields"]))
+            if result.get("audit_id"):
+                st.caption("订单查询审计编号：" + result["audit_id"])
         with st.expander("检索来源"):
             st.json(result["sources"])
 

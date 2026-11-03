@@ -31,3 +31,8 @@ def run():
     return report
 if __name__=="__main__":
     r=run(); print({k:r[k] for k in ("total","passed","failed","intent_accuracy","action_accuracy","order_dependency_accuracy")})
+    for case in r["cases"]:
+        if not case["pass"]:
+            failed_checks = [name for name, ok in case["checks"].items() if not ok]
+            print(f'FAILED {case["case_id"]}: checks={failed_checks}; expected={case["expected_intent"]}/{case["expected_action"]}/{case["expected_order_dependency"]}; actual={case["actual_intent"]}/{case["actual_action"]}/{case["actual_order_dependency"]}')
+    raise SystemExit(1 if r["failed"] else 0)

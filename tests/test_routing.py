@@ -11,15 +11,15 @@ def test_booking_parking_entitlement_requires_order():
     assert r["intent"]=="booking_related_inquiry"
     assert r["order_dependency"]=="required"
     assert "booking_entitlements" in r["data_dependencies"]
-    assert r["action"]=="order_context_unavailable"
+    assert r["action"]=="booking_lookup"
 
 def test_user_claim_does_not_authenticate_order():
     r=route_question("我订单里包含早餐吗？",{"order_status":"UNVERIFIED"})
-    assert r["action"]=="order_context_unavailable"
+    assert r["action"]=="booking_lookup"
 
 def test_verified_status_does_not_fake_booking_tool():
     ctx=update_order_status(default_context(),"VERIFIED")
-    assert route_question("我预订的是什么房型？",ctx)["action"]=="order_tool_not_connected"
+    assert route_question("我预订的是什么房型？",ctx)["action"]=="booking_lookup"
 
 def test_realtime_parking_is_not_static_faq():
     r=route_question("现在停车场还有车位吗？")

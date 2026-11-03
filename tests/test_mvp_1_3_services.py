@@ -6,7 +6,7 @@ from services.identity import Principal, principal_is_valid
 from services.auth_service import authenticate_demo_user
 from services.booking_service import BookingService
 
-NOW = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
+NOW = datetime.now(timezone.utc)
 
 def principal(customer_id="CUST-001", minutes=20):
     return Principal(
