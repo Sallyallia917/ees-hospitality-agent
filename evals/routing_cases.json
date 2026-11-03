@@ -45,42 +45,42 @@
     "case_id": "I07",
     "input": "我预订的是什么房型？",
     "expected_intent": "booking_related_inquiry",
-    "expected_action": "order_context_unavailable",
+    "expected_action": "booking_lookup",
     "expected_order_dependency": "required"
   },
   {
     "case_id": "I08",
     "input": "我预定的房型有停车位吗？",
     "expected_intent": "booking_related_inquiry",
-    "expected_action": "order_context_unavailable",
+    "expected_action": "booking_lookup",
     "expected_order_dependency": "required"
   },
   {
     "case_id": "I09",
     "input": "我订单里包含早餐吗？",
     "expected_intent": "booking_related_inquiry",
-    "expected_action": "order_context_unavailable",
+    "expected_action": "booking_lookup",
     "expected_order_dependency": "required"
   },
   {
     "case_id": "I10",
     "input": "我订了几晚？",
     "expected_intent": "booking_related_inquiry",
-    "expected_action": "order_context_unavailable",
+    "expected_action": "booking_lookup",
     "expected_order_dependency": "required"
   },
   {
     "case_id": "I11",
     "input": "我的订单入住日期是哪天？",
     "expected_intent": "booking_related_inquiry",
-    "expected_action": "order_context_unavailable",
+    "expected_action": "booking_lookup",
     "expected_order_dependency": "required"
   },
   {
     "case_id": "I12",
     "input": "我订的是大床还是双床？",
     "expected_intent": "booking_related_inquiry",
-    "expected_action": "order_context_unavailable",
+    "expected_action": "booking_lookup",
     "expected_order_dependency": "required"
   },
   {
@@ -192,14 +192,14 @@
     "case_id": "I28",
     "input": "我预订的房间有早餐吗？早餐几点开始？",
     "expected_intent": "booking_related_inquiry",
-    "expected_action": "order_context_unavailable",
+    "expected_action": "booking_lookup",
     "expected_order_dependency": "required"
   },
   {
     "case_id": "I29",
     "input": "我预订的房型有停车位吗？现在停车场还有空位吗？",
     "expected_intent": "booking_related_inquiry",
-    "expected_action": "order_context_unavailable",
+    "expected_action": "booking_lookup",
     "expected_order_dependency": "required"
   },
   {
