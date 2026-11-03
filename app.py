@@ -38,6 +38,7 @@ def clear_authentication():
     st.session_state.pop("ees_principal", None)
     st.session_state.pop("ees_booking_results", None)
     st.session_state.pop("ees_selected_booking", None)
+    st.session_state.ees_context.pop("active_booking_id", None)
 
 principal = st.session_state.get("ees_principal")
 if principal is not None and not principal_is_valid(principal):
@@ -57,6 +58,8 @@ with st.sidebar:
             if auth["ok"]:
                 st.session_state.ees_principal = auth["principal"]
                 st.session_state.pop("ees_booking_results", None)
+                st.session_state.ees_context.pop("active_booking_id", None)
+                st.session_state.pop("ees_qa_result", None)
                 st.success("演示身份验证成功。")
                 st.rerun()
             else:
