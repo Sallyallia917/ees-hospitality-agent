@@ -30,3 +30,7 @@ def run():
 if __name__=="__main__":
     result=run()
     print({k:result[k] for k in ("total","passed","failed")})
+    failed = [x for x in result["cases"] if not x["pass"]]
+    for case in failed:
+        print(f'FAILED {case["case_id"]}: intent {case["actual_intent"]}/{case["expected_intent"]}; action {case["actual_action"]}/{case["expected_action"]}; dependency {case["actual_order_dependency"]}/{case["expected_order_dependency"]}')
+    raise SystemExit(1 if failed else 0)
