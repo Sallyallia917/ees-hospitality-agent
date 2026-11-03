@@ -9,7 +9,7 @@ def _norm(text):
 
 def classify_by_rules(query, history=None):
     text=_norm(query); history=history or []
-    booking_ref = re.search(r"demo-booking-\\d{4,}", text, re.IGNORECASE)
+    booking_ref = re.search(r"demo-booking-\d{4,}", text, re.IGNORECASE)
     if booking_ref:
         return {"intent":"booking_related_inquiry","sub_intent":"booking_detail_by_id","entities":{"booking_id":booking_ref.group(0).upper()},"confidence":1.0,"method":"rules"}
     no_booking=any(x in text for x in ("还没预订","还没有预订","没有预订","尚未预订","没下单","未下单","还没订","没有订房"))
