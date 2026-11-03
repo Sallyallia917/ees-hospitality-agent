@@ -14,11 +14,9 @@ def route_question(query,context=None,history=None):
           "请立即远离危险区域，不要自行操作或维修；如有燃气泄漏、起火或人身危险，请联系当地紧急服务及现场工作人员。",
           "安全事件优先于其他意图，直接进入安全响应。",True,sub,method)
     if intent=="booking_related_inquiry":
-        action="order_tool_not_connected" if status=="VERIFIED" else "order_context_unavailable"
-        response=("当前版本尚未接入订单查询工具，暂时无法读取订单详情。请通过原预订平台或门店工作人员核实。" if status=="VERIFIED" else
-          "这个问题需要结合您的具体订单确认。当前版本没有接入订单系统，也无法验证订单归属，因此不能根据通用知识库推断您的房型或订单权益。请查看原预订平台订单详情，或联系门店工作人员核实。")
-        return _make(intent,"required",status,["booking_details","verified_identity","booking_entitlements"],False,False,"medium",action,response,
-          "个人订单信息和订单权益不得从公共 FAQ 推断；本版本不提供订单查询。",True,sub,method)
+        return _make(intent,"required",status,["booking_details","verified_identity","booking_entitlements"],False,False,"medium","booking_lookup",
+          "该问题需要查询当前登录用户有权访问的订单；由订单服务执行身份和归属校验。",
+          "个人订单信息不得从公共 FAQ 推断；通过只读订单服务查询并再次校验订单归属。",False,sub,method)
     if intent=="realtime_availability":
         return _make(intent,"none",status,["realtime_inventory"],False,True,"medium","human_escalation",
           "这个问题需要实时房态或现场资源数据。当前版本没有连接相关系统，无法确认当前库存，请联系工作人员核实。",
