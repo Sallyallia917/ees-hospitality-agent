@@ -15,7 +15,7 @@ def classify_by_rules(query, history=None):
     no_booking=any(x in text for x in ("还没预订","还没有预订","没有预订","尚未预订","没下单","未下单","还没订","没有订房"))
     if any(x in text for x in ("燃气","煤气","起火","冒火花","火花","电线冒烟","电线在冒烟","漏电","有人受伤","火灾")):
         return {"intent":"safety_incident","sub_intent":"safety","entities":{},"confidence":1.0,"method":"rules"}
-    transaction=("退款","退钱","取消订单","取消预订","改期","修改订单","换房","换为双床","换为大床","换成双床房","换成大床房","换为双床房","换为大床房","改成双床","改成大床","改为双床","改为大床","换成双床","换成大床","换为双床","换为大床","换为双床房","换为大床房","升级房型","延迟退房")
+    transaction=("退款","退钱","取消订单","取消预订","取消这笔预订","取消这笔订单","改期","往后改","往后调整","修改订单","换房","换为双床","换为大床","换成双床房","换成大床房","换为双床房","换为大床房","改成双床","改成大床","改为双床","改为大床","换成双床","换成大床","换为双床","换为大床","换为双床房","换为大床房","升级房型","延迟退房")
     if any(x in text for x in transaction):
         explicit_execution=any(x in text for x in ("帮我","请把","给我","现在就","我要","我想换","替我","帮忙把"))
         policy_question=(
@@ -26,7 +26,7 @@ def classify_by_rules(query, history=None):
         if policy_question and not explicit_execution:
             return {"intent":"public_knowledge_inquiry","sub_intent":"property_faq","entities":{},"confidence":.96,"method":"rules"}
         return {"intent":"transaction_request","sub_intent":"booking_change_or_refund","entities":{},"confidence":.98,"method":"rules"}
-    if any(x in text for x in ("投诉","赔偿","差评","没人处理","不回复","态度差","要求道歉","反馈服务问题","服务不满意","不满意")):
+    if any(x in text for x in ("投诉","赔偿","差评","没人处理","不回复","态度差","要求道歉","反馈服务问题","服务不满意","不满意","没回应","未回应","一直没回应")):
         return {"intent":"complaint","sub_intent":"service_complaint","entities":{},"confidence":.98,"method":"rules"}
     if any(x in text for x in ("现在还有","当前还有","今天还有","今晚还有","此刻有","实时","剩余房量","还有空房","有空位吗","有位置吗","现在有车位")) or (("现在" in text or "今天" in text or "今晚" in text) and any(x in text for x in ("车位","空房","房间","房")) and any(x in text for x in ("有","还有","剩"))):
         return {"intent":"realtime_availability","sub_intent":"inventory","entities":{},"confidence":.98,"method":"rules"}
@@ -40,7 +40,7 @@ def classify_by_rules(query, history=None):
             return {"intent":"booking_related_inquiry","sub_intent":"contextual_booking_followup","entities":{},"confidence":.82,"method":"context_rules"}
         if prev.get("intent")=="public_knowledge_inquiry":
             return {"intent":"public_knowledge_inquiry","sub_intent":"contextual_faq_followup","entities":{},"confidence":.8,"method":"context_rules"}
-    if any(x in text for x in ("送","加被子","毛巾","维修","不制冷","打不开门","打扫","清洁","补充用品","换毛巾")):
+    if any(x in text for x in ("送","加被子","加一床被子","加一床毯子","毛巾","维修","不制冷","打不开门","打扫","清洁","补充用品","换毛巾")):
         return {"intent":"service_request","sub_intent":"on_site_service","entities":{},"confidence":.9,"method":"rules"}
     return {"intent":"public_knowledge_inquiry","sub_intent":"property_faq","entities":{},"confidence":.72,"method":"rules"}
 
