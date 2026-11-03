@@ -1,7 +1,7 @@
 """Hybrid intent classification: deterministic rules first, optional LLM for ambiguous input.
 LLM output is advisory; business authorization and routing remain deterministic.
 """
-import json, os
+import json, os, re
 INTENTS={"public_knowledge_inquiry","booking_related_inquiry","realtime_availability","transaction_request","service_request","complaint","safety_incident","ambiguous"}
 
 def _norm(text):
@@ -9,6 +9,9 @@ def _norm(text):
 
 def classify_by_rules(query, history=None):
     text=_norm(query); history=history or []
+    booking_ref = re.search(r"demo-booking-\\d{4,}", text, re.IGNORECASE)
+    if booking_ref:
+        return {"intent":"booking_related_inquiry","sub_intent":"booking_detail_by_id","entities":{"booking_id":booking_ref.group(0).upper()},"confidence":1.0,"method":"rules"}
     no_booking=any(x in text for x in ("还没预订","还没有预订","没有预订","尚未预订","没下单","未下单","还没订","没有订房"))
     if any(x in text for x in ("燃气","煤气","起火","冒火花","火花","电线冒烟","电线在冒烟","漏电","有人受伤","火灾")):
         return {"intent":"safety_incident","sub_intent":"safety","entities":{},"confidence":1.0,"method":"rules"}
@@ -27,7 +30,7 @@ def classify_by_rules(query, history=None):
         return {"intent":"complaint","sub_intent":"service_complaint","entities":{},"confidence":.98,"method":"rules"}
     if any(x in text for x in ("现在还有","当前还有","今天还有","今晚还有","此刻有","实时","剩余房量","还有空房","有空位吗","有位置吗","现在有车位")) or (("现在" in text or "今天" in text or "今晚" in text) and any(x in text for x in ("车位","空房","房间","房")) and any(x in text for x in ("有","还有","剩"))):
         return {"intent":"realtime_availability","sub_intent":"inventory","entities":{},"confidence":.98,"method":"rules"}
-    order_cues=("我预订","我预定","我订","我的订单","订单里的","预订的","预定的","我之前订","我之前下的单","我这单","订单有没有","订房时选")
+    order_cues=("我预订","我预定","我订","我的订单","订单里的","预订的","预定的","我之前订","我之前下的单","我这单","订单有没有","订房时选","这笔订单","该订单")
     order_fields=("房型","房间","床型","早餐","含早","停车","权益","入住日期","退房日期","几晚","人数","订单","哪种床","大床","双床")
     if not no_booking and any(x in text for x in order_cues) and any(x in text for x in order_fields):
         return {"intent":"booking_related_inquiry","sub_intent":"booking_detail_or_entitlement","entities":{},"confidence":.97,"method":"rules"}
