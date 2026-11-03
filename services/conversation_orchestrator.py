@@ -5,7 +5,7 @@ from services.booking_service import BookingService
 from services.intent_router import route_question
 from services.response_generator import generate_booking_answer
 
-BOOKING_ID_RE = re.compile(r"\\bDEMO-BOOKING-\\d{4,}\\b", re.IGNORECASE)
+BOOKING_ID_RE = re.compile(r"\bDEMO-BOOKING-\d{4,}\b", re.IGNORECASE)
 FOLLOWUP_MARKERS = ("那", "这个", "它", "这笔", "这个订单", "那早餐", "那停车")
 
 class ConversationOrchestrator:
