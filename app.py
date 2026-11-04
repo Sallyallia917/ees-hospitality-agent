@@ -10,7 +10,7 @@ from services.identity import principal_is_valid
 from services.retrieval import load_knowledge
 from services.rag_service import answer_question, generate_with_optional_llm
 from services.intent_router import route_question
-from services.context_manager import default_context
+from services.context_manager import default_context, clear_dialogue_state
 from services.conversation_orchestrator import ConversationOrchestrator
 
 ROOT = Path(__file__).parent
@@ -19,7 +19,7 @@ st.set_page_config(page_title="EES 酒旅服务助手", page_icon="🏡", layout
 
 st.title("EES 酒旅服务助手")
 st.caption(
-    "MVP 1.3 · 知识问答 + 演示身份认证 + 只读订单查询。"
+    "MVP 1.4 · 多轮上下文 + 订单列表/详情查询 + 知识问答。"
     "所有订单、账号和政策均为合成演示数据，不连接真实酒店系统。"
 )
 
@@ -38,7 +38,8 @@ def clear_authentication():
     st.session_state.pop("ees_principal", None)
     st.session_state.pop("ees_booking_results", None)
     st.session_state.pop("ees_selected_booking", None)
-    st.session_state.ees_context.pop("active_booking_id", None)
+    clear_dialogue_state(st.session_state.ees_context)
+    st.session_state.ees_history = []
 
 principal = st.session_state.get("ees_principal")
 if principal is not None and not principal_is_valid(principal):
@@ -58,7 +59,8 @@ with st.sidebar:
             if auth["ok"]:
                 st.session_state.ees_principal = auth["principal"]
                 st.session_state.pop("ees_booking_results", None)
-                st.session_state.ees_context.pop("active_booking_id", None)
+                clear_dialogue_state(st.session_state.ees_context)
+                st.session_state.ees_history = []
                 st.session_state.pop("ees_qa_result", None)
                 st.success("演示身份验证成功。")
                 st.rerun()
