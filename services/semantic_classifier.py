@@ -87,7 +87,7 @@ def classify_by_rules(query, history=None, context=None):
 
     # A personal possessive + a booking-specific field is sufficient.
     personal_markers = ("我的", "我订", "我预订", "我预定", "我之前", "我这单",
-                        "订单", "这笔订单", "该订单", "预订的", "预定的")
+                        "订单", "这笔订单", "该订单", "预订的", "预定的", "订房时选")
     booking_fields = (
         "房型", "房间", "床型", "早餐", "含早", "停车", "权益",
         "入住日期", "入住时间", "退房日期", "退房时间", "几晚",
