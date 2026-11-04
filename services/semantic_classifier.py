@@ -57,7 +57,7 @@ def classify_by_rules(query, history=None, context=None):
 
     # Booking errors are not public FAQ. Actual change/cancel is still handoff.
     if any(x in text for x in ("订单订错", "预定错误", "预订错误", "订错了",
-                               "订单有误", "订单信息错", "订房订错", "预定订错")):
+                               "订单有误", "订单信息有误", "订单信息错", "订房订错", "预定订错")):
         return _result("booking_issue", "booking_error", .98)
 
     transaction_terms = (
@@ -102,7 +102,7 @@ def classify_by_rules(query, history=None, context=None):
     has_active_booking = bool(context.get("active_booking_id"))
     if not no_booking and previous_intent in {
         "booking_related_inquiry", "booking_list_query", "booking_selection"
-    } and (has_active_booking or context.get("candidate_booking_ids")):
+    } and (has_active_booking or context.get("candidate_booking_ids") or text.startswith("那") or any(x in text for x in ("它呢", "这个呢", "那呢"))):
         if any(x in text for x in (
             "早餐", "含早", "停车", "权益", "入住", "退房", "房型",
             "房间", "床型", "那", "这个", "它", "几晚", "人数"
