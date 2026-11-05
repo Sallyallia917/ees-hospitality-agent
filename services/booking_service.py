@@ -23,7 +23,10 @@ class BookingService:
         return [b for b in self.repository.list_bookings() if b.get("customer_id") == principal.customer_id]
 
     def _summary(self, booking):
-        return {k: booking.get(k) for k in SUMMARY_FIELDS}
+        summary = {k: booking.get(k) for k in SUMMARY_FIELDS}
+        prop = self.repository.get_property(booking.get("property_id"))
+        summary["property_name"] = prop.get("property_name") if prop else None
+        return summary
 
     def search_my_bookings(self, principal, filters=None, limit=3):
         if not principal_is_valid(principal):
