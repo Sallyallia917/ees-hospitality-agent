@@ -11,7 +11,7 @@ ACTS = {
 }
 
 def classify_dialogue_act(message: str, context=None, history=None):
-    text = re.sub(r"\s+, "", str(message or "")).lower()
+    text = re.sub(r"\s+", "", str(message or "")).lower()
     context = context or {}
     history = history or []
 
