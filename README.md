@@ -1,4 +1,4 @@
-# EES Hospitality Agent — MVP 1.6
+# EES Hospitality Agent — MVP 1.8 (vertical-slice preview)
 
 面向民宿与酒店服务场景的 AI 服务助手原型。演示门店、账户、订单、政策和案例均为合成数据，不代表真实门店规则或生产效果。
 
@@ -13,7 +13,7 @@ streamlit run app.py
 
 可选 LLM：复制 \`.env.example\` 为 \`.env\`，配置兼容 OpenAI Chat Completions 的 API key、base URL 和 model。未配置或调用失败时，系统回退到规则分类和确定性回复。不要提交密钥。
 
-## MVP 1.6 capabilities
+## MVP 1.8 capabilities (two-day vertical slice)\n- **对话行为识别模块**：新增历史指代、补充、纠正、状态查询、投诉等 dialogue-act 识别；历史指代型投诉不再默认落入公共 FAQ。\n- **服务工单持久化**：新增 SQLite TicketService，支持创建、查询、列表、指派、状态更新及状态历史。\n- **工单安全边界**：住客读取按 guest_id 校验归属；非法状态流转拒绝；创建支持幂等键；解决后仍未解决可重新进入处理中。\n- **演示工作台**：新增住客服务请求表单、本人工单列表和演示员工状态更新工作台。员工工作台尚无生产级 RBAC。\n\n## MVP 1.6 capabilities
 - **多意图识别**：区分公共知识咨询、订单列表、订单详情/权益、订单选择、订单异常、实时库存、交易变更、现场服务、投诉和安全事件。
 - **多轮对话状态**：维护最近意图、当前订单、候选订单、待执行的选择步骤和对话阶段；支持“我有几笔订单 → 第二笔 → 我的早餐含早吗”这类连续查询。
 - **订单只读查询**：订单列表默认最多返回最近三笔；支持序号选择；每次详情读取仍由 BookingService 校验登录身份和订单归属。
@@ -25,7 +25,7 @@ streamlit run app.py
 - **连续订单处理**：一笔操作确认/结束后，用户可以在同一会话重新选择另一笔订单，不再沿用上一笔活动订单。
 - **状态边界**：用户确认仅表示确认提出请求；演示版只记录“已提示转人工”，不代表真实客服已接单、工单已创建或订单已取消/退款。
 
-## Architecture
+## MVP 1.8 ticket lifecycle\n`SUBMITTED -> ASSIGNED -> PROCESSING -> PENDING_USER -> RESOLVED -> CLOSED`；支持从处理阶段升级 `ESCALATED`，以及住客反馈未解决后从 `RESOLVED/CLOSED` 重新进入 `PROCESSING`。\n\n工单数据保存在本地 `data/tickets.sqlite3`。这是单实例演示持久化，不是生产级数据库部署。\n\n## Architecture
 \`\`\`text
 Streamlit UI / Session
         |
@@ -72,4 +72,4 @@ python -m evals.run_mvp_1_2_evaluation
 - MVP 1.2: 规则 + 可选 LLM 意图分类、确定性业务路由和路由评测。
 - MVP 1.3: 合成订单数据、演示身份认证、只读订单服务、订单归属校验和审计。
 - MVP 1.3.1: 对话入口接入订单只读查询。
-- MVP 1.4: 订单列表/选择、多轮对话状态、个人订单语义识别、订单异常转人工及证据约束回复。\n- MVP 1.5: 订单取消/退款与异常处理闭环、订单级政策查询和显式确认。\n- **MVP 1.6: 多订单、多操作会话状态；支持同一会话连续处理不同订单，并保留各笔操作记录。**
+- MVP 1.4: 订单列表/选择、多轮对话状态、个人订单语义识别、订单异常转人工及证据约束回复。\n- MVP 1.5: 订单取消/退款与异常处理闭环、订单级政策查询和显式确认。\n- **MVP 1.6: 多订单、多操作会话状态；支持同一会话连续处理不同订单，并保留各笔操作记录。**\n- **MVP 1.8 preview: 对话行为识别、SQLite 演示工单生命周期、住客工单归属校验、幂等创建与演示员工工作台。**
