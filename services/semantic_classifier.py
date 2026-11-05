@@ -29,8 +29,8 @@ def _policy_question(text):
 def _transaction_request(text):
     terms = ("我要取消", "帮我取消", "请取消", "申请取消", "取消订单",
              "取消预订", "取消预定", "取消我预订", "取消我预定",
-             "我要退款", "帮我退款", "申请退款", "取消退款", "退钱",
-             "改期", "修改订单", "换房", "升级房型", "延迟退房")
+             "我要退款", "帮我退款", "申请退款", "取消退款", "退款", "退钱", "办理退款", "现在给我退款",
+             "改期", "往后改", "往后调整", "修改订单", "换房", "升级房型", "延迟退房", "换为双床", "换为大床", "换成双床", "换成大床", "改成双床", "改成大床", "改为双床", "改为大床", "改为双床房", "改为大床房", "改成双床房", "改成大床房", "换成双床房", "换成大床房", "我想换成", "我想改成", "我想改期")
     return any(x in text for x in terms)
 
 def classify_by_rules(query, history=None, context=None):
@@ -38,7 +38,7 @@ def classify_by_rules(query, history=None, context=None):
     history, context = history or [], context or {}
     no_booking = any(x in text for x in ("还没预订", "没有预订", "尚未预订", "没下单", "未下单", "没有订单"))
 
-    if any(x in text for x in ("燃气", "煤气", "起火", "冒火花", "火花", "电线冒烟", "漏电", "有人受伤", "火灾")):
+    if any(x in text for x in ("燃气", "煤气", "起火", "冒火花", "火花", "电线冒烟", "电线在冒烟", "漏电", "有人受伤", "火灾")):
         return _result("safety_incident", "safety", 1.0)
 
     if _policy_question(text):
