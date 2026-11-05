@@ -98,7 +98,9 @@ def classify_by_rules(query, history=None, context=None):
         return _result("public_knowledge_inquiry", "property_cancellation_policy", .90)
 
     if _transaction_request(text):
-        return _result("transaction_request", "booking_cancel_or_refund", .99)
+        change_terms = ("改期", "往后改", "往后调整", "修改订单", "换房", "升级房型", "延迟退房", "换为", "换成", "改成", "改为")
+        sub_intent = "booking_change_or_refund" if any(x in text for x in change_terms) else "booking_cancel_or_refund"
+        return _result("transaction_request", sub_intent, .99)
 
     if any(x in text for x in ("投诉", "赔偿", "差评", "没人处理", "不回复", "态度差",
                                "要求道歉", "反馈服务问题", "服务不满意", "不满意", "没回应", "未回应")):
