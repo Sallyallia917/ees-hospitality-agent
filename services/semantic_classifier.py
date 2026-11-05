@@ -117,11 +117,13 @@ def classify_by_rules(query, history=None, context=None):
     if not no_booking and previous_intent in {
         "booking_related_inquiry", "booking_list_query", "booking_selection",
         "cancellation_policy_inquiry", "transaction_request", "booking_issue"
-    } and (context.get("active_booking_id") or context.get("candidate_booking_ids")):
+    } and (context.get("active_booking_id") or context.get("candidate_booking_ids") or text.startswith("那") or any(x in text for x in ("它呢", "这个呢", "那呢"))):
         if any(x in text for x in ("早餐", "含早", "停车", "权益", "入住", "退房", "房型",
                                    "房间", "床型", "取消", "退款", "那", "这个", "它", "日期")):
             return _result("booking_related_inquiry", "contextual_booking_followup", .90, "context_rules")
 
+    if (("现在" in text or "今天" in text or "今晚" in text) and any(x in text for x in ("车位", "空房", "房间", "房")) and any(x in text for x in ("有", "还有", "剩"))):
+        return _result("realtime_availability", "inventory", .98)
     if any(x in text for x in ("现在还有", "当前还有", "今天还有", "今晚还有", "此刻有",
                                "实时", "剩余房量", "还有空房", "有空位吗", "有位置吗", "现在有车位")):
         return _result("realtime_availability", "inventory", .98)
