@@ -20,7 +20,7 @@ def test_cancellation_policy_is_distinct_from_cancel_execution():
     assert classify_by_rules("我的高级双床房能取消吗")["intent"] == "cancellation_policy_inquiry"
     assert classify_by_rules("订单的取消政策")["intent"] == "cancellation_policy_inquiry"
     assert classify_by_rules("我要取消我预定的房源")["intent"] == "transaction_request"
-    assert route_question("取消退款")["action"] == "transaction_confirmation"
+    assert route_question("取消退款")["action"] == "transaction_handoff"
 
 def test_policy_query_returns_policy_not_unrelated_booking_fields():
     context = {}
