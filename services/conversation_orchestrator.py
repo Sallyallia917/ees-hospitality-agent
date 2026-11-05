@@ -23,7 +23,7 @@ class ConversationOrchestrator:
         action, intent = route.get("action"), route.get("intent")
 
         handled_actions = {"booking_lookup", "booking_list", "booking_selection",
-                           "booking_policy_lookup", "transaction_confirmation", "booking_issue"}
+                           "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue"}
         if action not in handled_actions:
             return {"handled": False, "route": route}
         if not principal_is_valid(principal):
@@ -37,6 +37,10 @@ class ConversationOrchestrator:
         if action == "booking_policy_lookup":
             return self._resolve_booking(message, principal, context, route, "policy")
         if action == "transaction_confirmation":
+            return self._transaction(message, principal, context, route)
+        if action == "transaction_handoff":
+            if intent == "booking_issue":
+                return self._booking_issue(message, principal, context, route)
             return self._transaction(message, principal, context, route)
         if action == "booking_issue":
             return self._booking_issue(message, principal, context, route)
