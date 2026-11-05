@@ -28,7 +28,7 @@ def route_question(query, context=None, history=None):
             "仅允许从已认证订单列表中选择。", False, sub, method)
     if intent == "booking_issue":
         return _make(intent, "required", status, ["verified_identity", "booking_records"], False, False,
-            "high", "booking_issue", "需要先确认具体订单，再了解错误内容并转人工核实。",
+            "high", "transaction_handoff", "需要先确认具体订单，再了解错误内容并转人工核实。",
             "订单信息更正涉及交易数据，必须人工核验。", True, sub, method)
     if intent == "cancellation_policy_inquiry":
         return _make(intent, "required", status, ["verified_identity", "booking_details", "cancellation_policy"],
@@ -42,7 +42,7 @@ def route_question(query, context=None, history=None):
             "个人订单信息不得从公共 FAQ 推断。", False, sub, method)
     if intent == "transaction_request":
         return _make(intent, "required", status, ["verified_identity", "booking_details", "business_rules", "authorization"],
-            False, False, "high", "transaction_confirmation",
+            False, False, "high", "transaction_handoff",
             "需要先确认具体订单和操作意图，确认后转人工；当前版本不执行取消、退款或订单变更。",
             "交易操作必须经过授权和业务系统执行；当前版本仅转人工。", True, sub, method)
     if intent == "realtime_availability":
