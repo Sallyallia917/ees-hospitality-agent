@@ -1,4 +1,4 @@
-"""Explicit dialogue state for authenticated booking conversations."""
+"""Explicit dialogue and operation state for authenticated booking conversations."""
 VALID_ORDER_STATUSES = {"UNKNOWN", "UNVERIFIED", "VERIFIED"}
 
 def default_context():
@@ -8,6 +8,7 @@ def default_context():
         "candidate_booking_summaries": [], "last_intent": None,
         "last_sub_intent": None, "pending_action": None, "dialogue_stage": "idle",
         "pending_transaction_type": None, "pending_issue_text": None,
+        "current_operation": None, "booking_operations": [], "operation_sequence": 0,
     }
 
 def update_order_status(context, status):
@@ -42,6 +43,43 @@ def remember_active_booking(context, booking_id):
     state["pending_action"] = None
     state["dialogue_stage"] = "booking_selected"
     return state
+
+def begin_operation(context, booking_id, operation_type):
+    state = context if isinstance(context, dict) else default_context()
+    state["operation_sequence"] = int(state.get("operation_sequence") or 0) + 1
+    operation = {
+        "operation_id": f"OP-{state['operation_sequence']:03d}",
+        "booking_id": booking_id,
+        "operation_type": operation_type,
+        "stage": "awaiting_confirmation" if operation_type == "cancel_or_refund" else "awaiting_issue_details",
+        "user_confirmed": False,
+        "status": "in_progress",
+    }
+    state["current_operation"] = operation
+    state["active_booking_id"] = state["booking_id"] = booking_id
+    state["pending_action"] = "confirm_transaction" if operation_type == "cancel_or_refund" else "describe_booking_issue"
+    state["pending_transaction_type"] = operation_type
+    state["dialogue_stage"] = operation["stage"]
+    return operation
+
+def complete_operation(context, status, **extra):
+    state = context if isinstance(context, dict) else default_context()
+    operation = state.get("current_operation")
+    if not isinstance(operation, dict):
+        return None
+    operation = dict(operation)
+    operation["status"] = status
+    operation.update(extra)
+    if status in ("handed_off", "cancelled_by_user"):
+        operation["stage"] = status
+    state.setdefault("booking_operations", []).append(operation)
+    state["current_operation"] = None
+    state["active_booking_id"] = state["booking_id"] = None
+    state["pending_action"] = None
+    state["pending_transaction_type"] = None
+    state["pending_issue_text"] = None
+    state["dialogue_stage"] = "idle"
+    return operation
 
 def clear_dialogue_state(context):
     state = context if isinstance(context, dict) else default_context()
