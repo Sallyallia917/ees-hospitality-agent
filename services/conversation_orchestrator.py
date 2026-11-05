@@ -196,6 +196,7 @@ class ConversationOrchestrator:
         if context.get("active_booking_id"):
             detail = self.booking_service.get_my_booking(principal, context["active_booking_id"])
             if detail.get("status") in ("ok", "data_incomplete"):
+                context["pending_action"] = "describe_booking_issue"
                 return self._issue_prompt(detail, route)
         result = self.booking_service.search_my_bookings(principal, limit=3)
         if result.get("status") != "ok":
@@ -210,6 +211,7 @@ class ConversationOrchestrator:
         if detail.get("status") not in ("ok", "data_incomplete"):
             return self._failure(detail, route)
         remember_active_booking(context, rows[0]["booking_id"])
+        context["pending_action"] = "describe_booking_issue"
         return self._issue_prompt(detail, route)
 
     def _issue_prompt(self, detail, route):
