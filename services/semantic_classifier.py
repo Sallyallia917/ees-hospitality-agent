@@ -22,6 +22,10 @@ def _policy_question(text):
              "可以取消吗", "能不能取消", "可不可以取消", "是否可以取消",
              "取消会扣钱吗", "取消要收费吗")
     return any(x in text for x in terms) or (
+        any(x in text for x in ("改成", "改为", "换成", "换为")) and
+        any(x in text for x in ("酒店允许", "酒店可以", "是否允许", "能不能", "可以吗")) and
+        not any(x in text for x in ("帮我", "请把", "我要", "我想"))
+    ) or (
         any(x in text for x in ("取消", "退款")) and
         any(x in text for x in ("政策", "规则", "能吗", "可以吗", "可不可以", "能不能"))
     )
