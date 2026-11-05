@@ -41,6 +41,12 @@ def classify_by_rules(query, history=None, context=None):
     if any(x in text for x in ("燃气", "煤气", "起火", "冒火花", "火花", "电线冒烟", "漏电", "有人受伤", "火灾")):
         return _result("safety_incident", "safety", 1.0)
 
+    if _policy_question(text):
+        personal = any(x in text for x in ("我的", "我订", "我预订", "我预定", "订单", "房源", "房间", "这笔"))
+        if personal or context.get("active_booking_id") or context.get("candidate_booking_ids"):
+            return _result("cancellation_policy_inquiry", "booking_cancellation_policy", .99)
+        return _result("public_knowledge_inquiry", "property_cancellation_policy", .90)
+
     if context.get("candidate_booking_ids"):
         ordinal = re.search(r"(?:第)?([一二三123])(?:笔|个|单|个订单)?", text)
         if ordinal:
