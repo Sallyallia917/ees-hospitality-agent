@@ -56,7 +56,7 @@ def classify_by_rules(query, history=None, context=None):
         for row in candidates:
             values = [row.get("room_type"), row.get("property_name"), row.get("property_id"),
                       str(row.get("check_in") or "")[:10], str(row.get("check_out") or "")[:10]]
-            if any(v and len(str(v)) >= 2 and str(v).lower() in text for v in values):
+            if any(v and len(str(v)) >= 2 and (str(v).lower() in text or text in str(v).lower()) for v in values):
                 matches.append(row)
         if len(matches) == 1:
             return _result("booking_selection", "select_booking_by_attribute", .98,
