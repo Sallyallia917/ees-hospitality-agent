@@ -123,8 +123,21 @@ class ConversationOrchestrator:
                 if 0 <= index < len(ids):
                     booking_id = ids[index]
         if not booking_id:
-            return self._simple(route, "needs_clarification",
-                "没有唯一匹配到订单。请提供序号、完整房型、房源名称或入住日期。", "select_booking", clarification=True)
+            query = "".join(str(message or "").lower().split())
+            matched = []
+            for candidate_id in ids:
+                detail = self.booking_service.get_my_booking(principal, candidate_id)
+                if detail.get("status") not in ("ok", "data_incomplete"):
+                    continue
+                booking = detail.get("booking") or {}
+                prop = detail.get("property") or {}
+                values = [booking.get("room_type"), prop.get("property_name"), str(booking.get("check_in") or "")[:10], str(booking.get("check_out") or "")[:10]]
+                if any(v and len(str(v)) >= 2 and (str(v).lower() in query or query in str(v).lower()) for v in values):
+                    matched.append(candidate_id)
+            if len(matched) == 1:
+                booking_id = matched[0]
+            else:
+                return self._simple(route, "needs_clarification", "没有唯一匹配到订单。请提供序号、完整房型、房源名称或入住日期。", "select_booking", clarification=True)
         if booking_id not in ids:
             return self._simple(route, "needs_clarification",
                 "该信息不属于刚才展示的候选订单，请重新选择。", "select_booking", clarification=True)
