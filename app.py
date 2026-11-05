@@ -38,6 +38,8 @@ def clear_authentication():
     st.session_state.pop("ees_principal", None)
     st.session_state.pop("ees_booking_results", None)
     st.session_state.pop("ees_selected_booking", None)
+    st.session_state.pop("ees_qa_result", None)
+    st.session_state.pop("qa_question", None)
     clear_dialogue_state(st.session_state.ees_context)
     st.session_state.ees_history = []
 
@@ -62,6 +64,7 @@ with st.sidebar:
                 clear_dialogue_state(st.session_state.ees_context)
                 st.session_state.ees_history = []
                 st.session_state.pop("ees_qa_result", None)
+                st.session_state.pop("qa_question", None)
                 st.success("演示身份验证成功。")
                 st.rerun()
             else:
