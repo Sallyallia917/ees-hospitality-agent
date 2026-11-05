@@ -102,6 +102,9 @@ def classify_by_rules(query, history=None, context=None):
         sub_intent = "booking_change_or_refund" if any(x in text for x in change_terms) else "booking_cancel_or_refund"
         return _result("transaction_request", sub_intent, .99)
 
+    if any(x in text for x in ("你不记得", "我刚才说过", "我之前说过", "之前不是", "刚才提过")):
+        return _result("complaint", "history_reference_complaint", .94, "context_rules")
+
     if any(x in text for x in ("投诉", "赔偿", "差评", "没人处理", "不回复", "态度差",
                                "要求道歉", "反馈服务问题", "服务不满意", "不满意", "没回应", "未回应")):
         return _result("complaint", "service_complaint", .98)
