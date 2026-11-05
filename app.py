@@ -19,7 +19,7 @@ st.set_page_config(page_title="EES 酒旅服务助手", page_icon="🏡", layout
 
 st.title("EES 酒旅服务助手")
 st.caption(
-    "MVP 1.4 · 多轮上下文 + 订单列表/详情查询 + 知识问答。"
+    "MVP 1.8 · 多轮上下文 + 订单只读查询 + 服务工单演示。"
     "所有订单、账号和政策均为合成演示数据，不连接真实酒店系统。"
 )
 
@@ -80,7 +80,7 @@ with st.sidebar:
     st.caption("演示环境说明")
     st.info("订单查询为只读；取消政策仅展示，不执行取消或退款。")
 
-tab_qa, tab_booking = st.tabs(["门店知识问答", "我的订单"])
+tab_qa, tab_booking, tab_tickets = st.tabs(["门店知识问答", "我的订单", "服务工单"])
 
 with tab_qa:
     kb = load_knowledge(ROOT / "knowledge" / "property_faq.json")
