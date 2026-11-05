@@ -1,4 +1,5 @@
 from datetime import date
+import uuid
 from pathlib import Path
 
 import streamlit as st
@@ -12,6 +13,7 @@ from services.rag_service import answer_question, generate_with_optional_llm
 from services.intent_router import route_question
 from services.context_manager import default_context, clear_dialogue_state
 from services.conversation_orchestrator import ConversationOrchestrator
+from services.ticket_service import TicketService, STATUSES
 
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
@@ -33,6 +35,8 @@ if "ees_conversation_orchestrator" not in st.session_state:
     st.session_state.ees_conversation_orchestrator = ConversationOrchestrator(
         st.session_state.ees_booking_service
     )
+if "ees_ticket_service" not in st.session_state:
+    st.session_state.ees_ticket_service = TicketService(ROOT / "data" / "tickets.sqlite3")
 
 def clear_authentication():
     st.session_state.pop("ees_principal", None)
@@ -236,6 +240,67 @@ with tab_booking:
                 st.error("登录状态已失效，请重新登录。")
             else:
                 st.error("订单查询暂不可用，系统未返回订单数据。")
+
+
+with tab_tickets:
+    st.subheader("服务请求与工单")
+    st.caption("演示工单持久化于本地 SQLite；数据为合成演示，不代表真实员工接单或现场服务已执行。")
+    if principal is None:
+        st.info("请先在左侧完成演示身份认证后提交或查询本人服务工单。")
+    else:
+        with st.form("ticket_create_form"):
+            category = st.selectbox("服务类型", ["CLEANING", "ROOM_SERVICE", "MAINTENANCE", "COMPLAINT", "BOOKING_ISSUE", "OTHER"])
+            description = st.text_area("问题或服务需求", placeholder="例如：房间空调不制冷，希望工作人员检查。")
+            priority = st.selectbox("优先级", ["LOW", "NORMAL", "HIGH", "URGENT"], index=1)
+            booking_ref = st.text_input("关联订单号（可选）")
+            ticket_submit = st.form_submit_button("提交服务请求", type="primary")
+        if ticket_submit:
+            result = st.session_state.ees_ticket_service.create_ticket(
+                guest_id=principal.customer_id, description=description, category=category,
+                priority=priority, booking_id=booking_ref.strip() or None,
+                idempotency_key=str(uuid.uuid4())
+            )
+            if result["ok"]:
+                st.success("已创建演示工单：" + result["ticket"]["ticket_id"])
+            else:
+                st.error("提交失败：" + result["error"])
+        st.markdown("#### 我的工单")
+        mine = st.session_state.ees_ticket_service.list_tickets(guest_id=principal.customer_id)
+        if mine:
+            for ticket in mine:
+                with st.expander(f'{ticket["ticket_id"]} · {ticket["category"]} · {ticket["status"]}'):
+                    st.write(ticket["description"])
+                    st.caption(f'优先级：{ticket["priority"]} · 创建：{ticket["created_at"]}')
+                    st.json(ticket["history"])
+        else:
+            st.caption("当前没有本人演示工单。")
+
+    st.divider()
+    st.markdown("#### 员工处理工作台（演示）")
+    st.warning("此工作台没有生产级员工身份认证，仅用于展示工单状态流转；请勿用于真实客户数据。")
+    all_tickets = st.session_state.ees_ticket_service.list_tickets(staff=True)
+    if not all_tickets:
+        st.caption("暂无待处理工单。")
+    else:
+        ticket_labels = {f'{t["ticket_id"]} · {t["category"]} · {t["status"]}': t["ticket_id"] for t in all_tickets}
+        selected_label = st.selectbox("选择工单", list(ticket_labels.keys()), key="staff_ticket_select")
+        selected_id = ticket_labels[selected_label]
+        selected = st.session_state.ees_ticket_service.get_ticket(selected_id, staff=True)["ticket"]
+        st.write(selected["description"])
+        st.caption("当前状态：" + selected["status"])
+        next_status = st.selectbox("更新状态", sorted(STATUSES), key="staff_ticket_status")
+        staff_note = st.text_input("处理备注", key="staff_ticket_note")
+        assignee = st.text_input("指派员工（演示标识）", key="staff_ticket_assignee")
+        if st.button("保存工单状态", key="staff_ticket_update"):
+            updated = st.session_state.ees_ticket_service.update_ticket(
+                selected_id, next_status, actor="demo-staff", note=staff_note,
+                assigned_to=assignee.strip() or None
+            )
+            if updated["ok"]:
+                st.success("状态已更新。")
+                st.rerun()
+            else:
+                st.error("状态更新失败：" + updated["error"])
 
 st.divider()
 st.caption(
