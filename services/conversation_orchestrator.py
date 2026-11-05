@@ -5,7 +5,8 @@ from services.booking_service import BookingService
 from services.intent_router import route_question
 from services.response_generator import generate_booking_answer, _policy_answer
 from services.context_manager import (
-    remember_intent, remember_candidates, remember_active_booking
+    remember_intent, remember_candidates, remember_active_booking,
+    begin_operation, complete_operation
 )
 
 BOOKING_ID_RE = re.compile(r"\bDEMO-BOOKING-\d{4,}\b", re.IGNORECASE)
@@ -150,34 +151,30 @@ class ConversationOrchestrator:
             return self._simple(route, result["status"], _policy_answer(result.get("cancellation_policy")),
                 "booking_policy_lookup", data={"booking": result.get("booking"),
                 "cancellation_policy": result.get("cancellation_policy")}, audit_id=result.get("audit_id"))
-        if purpose in ("select_transaction", "select_issue"):
-            context["pending_action"] = "confirm_transaction" if purpose == "select_transaction" else "describe_booking_issue"
-            context["pending_transaction_type"] = context.get("pending_transaction_type") or "cancel_or_refund"
-            return self._transaction_prompt(result, route) if purpose == "select_transaction" else self._issue_prompt(result, route)
+        if purpose == "select_transaction":
+            begin_operation(context, booking_id, "cancel_or_refund")
+            return self._transaction_prompt(result, route)
+        if purpose == "select_issue":
+            begin_operation(context, booking_id, "booking_issue")
+            return self._issue_prompt(result, route)
         return self._simple(route, result["status"], generate_booking_answer(message, result),
             "booking_lookup", data={"booking": result.get("booking"), "cancellation_policy": result.get("cancellation_policy")},
             audit_id=result.get("audit_id"))
 
     def _transaction(self, message, principal, context, route):
         sub = route.get("sub_intent")
-        if sub == "reject_transaction":
-            context["pending_action"] = None
-            context["pending_transaction_type"] = None
-            context["dialogue_stage"] = "booking_selected" if context.get("active_booking_id") else "idle"
-            return self._simple(route, "cancelled_by_user", "好的，已停止本次取消/退款申请，没有执行任何订单操作。", "transaction_aborted")
-        if sub == "confirm_transaction" and context.get("pending_action") == "confirm_transaction":
-            booking_id = context.get("active_booking_id")
-            context["pending_action"] = None
-            context["dialogue_stage"] = "human_handoff"
+        current = context.get("current_operation") or {}
+        if sub == "reject_transaction" and current.get("operation_type") == "cancel_or_refund" and current.get("stage") == "awaiting_confirmation":
+            completed = complete_operation(context, "cancelled_by_user", user_confirmed=False)
+            return self._simple(route, "cancelled_by_user", "好的，已停止本次取消/退款申请，没有执行任何订单操作。您仍可继续处理其他订单。",
+                                "transaction_aborted", data={"operation": completed})
+        if sub == "confirm_transaction" and current.get("operation_type") == "cancel_or_refund" and current.get("stage") == "awaiting_confirmation":
+            booking_id = current.get("booking_id")
+            completed = complete_operation(context, "handed_off", user_confirmed=True)
             return self._simple(route, "human_handoff",
-                f"已确认订单 {booking_id} 及您的取消/退款请求。当前演示版本不会执行取消或退款，请联系工作人员核对订单渠道、政策及授权后处理。",
-                "transaction_handoff", needs_human=True, data={"booking_id": booking_id})
-        if context.get("active_booking_id"):
-            detail = self.booking_service.get_my_booking(principal, context["active_booking_id"])
-            if detail.get("status") in ("ok", "data_incomplete"):
-                context["pending_action"] = "confirm_transaction"
-                context["pending_transaction_type"] = "cancel_or_refund"
-                return self._transaction_prompt(detail, route)
+                f"已记录订单 {booking_id} 的取消/退款申请意愿。当前演示版本不会执行取消或退款，也未创建真实服务单，请联系工作人员核对订单渠道、政策及授权后处理。您可以继续处理其他订单。",
+                "transaction_handoff", needs_human=True, data={"booking_id": booking_id, "operation": completed})
+        # New transaction requests must not inherit a previous operation's booking.
         result = self.booking_service.search_my_bookings(principal, limit=3)
         if result.get("status") != "ok":
             return self._failure(result, route)
@@ -192,8 +189,7 @@ class ConversationOrchestrator:
         if detail.get("status") not in ("ok", "data_incomplete"):
             return self._failure(detail, route)
         remember_active_booking(context, rows[0]["booking_id"])
-        context["pending_action"] = "confirm_transaction"
-        context["pending_transaction_type"] = "cancel_or_refund"
+        begin_operation(context, rows[0]["booking_id"], "cancel_or_refund")
         return self._transaction_prompt(detail, route)
 
     def _transaction_prompt(self, detail, route):
@@ -203,18 +199,14 @@ class ConversationOrchestrator:
             "confirm_transaction", clarification=True, data={"booking": b}, audit_id=detail.get("audit_id"))
 
     def _booking_issue(self, message, principal, context, route):
-        if route.get("sub_intent") == "issue_details" and context.get("active_booking_id"):
-            booking_id = context["active_booking_id"]
-            context["pending_action"] = None
-            context["dialogue_stage"] = "human_handoff"
+        current = context.get("current_operation") or {}
+        if route.get("sub_intent") == "issue_details" and current.get("operation_type") == "booking_issue" and current.get("stage") == "awaiting_issue_details":
+            booking_id = current.get("booking_id")
+            completed = complete_operation(context, "handed_off", user_confirmed=True, issue=message)
             return self._simple(route, "human_handoff",
-                f"已记录您反馈的订单问题：{message}。关联订单 {booking_id}，请联系工作人员核对处理。当前版本不会自动修改订单。",
-                "transaction_handoff", needs_human=True, data={"booking_id": booking_id, "issue": message})
-        if context.get("active_booking_id"):
-            detail = self.booking_service.get_my_booking(principal, context["active_booking_id"])
-            if detail.get("status") in ("ok", "data_incomplete"):
-                context["pending_action"] = "describe_booking_issue"
-                return self._issue_prompt(detail, route)
+                f"已记录您反馈的订单问题：{message}。关联订单 {booking_id}。当前演示版本不会自动修改订单，也未创建真实服务单，请联系工作人员核对处理。您可以继续处理其他订单。",
+                "transaction_handoff", needs_human=True, data={"booking_id": booking_id, "issue": message, "operation": completed})
+        # New issue reports must not inherit a previous operation's booking.
         result = self.booking_service.search_my_bookings(principal, limit=3)
         if result.get("status") != "ok":
             return self._failure(result, route)
@@ -228,7 +220,7 @@ class ConversationOrchestrator:
         if detail.get("status") not in ("ok", "data_incomplete"):
             return self._failure(detail, route)
         remember_active_booking(context, rows[0]["booking_id"])
-        context["pending_action"] = "describe_booking_issue"
+        begin_operation(context, rows[0]["booking_id"], "booking_issue")
         return self._issue_prompt(detail, route)
 
     def _issue_prompt(self, detail, route):
