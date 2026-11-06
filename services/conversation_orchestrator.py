@@ -156,6 +156,7 @@ class ConversationOrchestrator:
                 "cancellation_policy": result.get("cancellation_policy")}, audit_id=result.get("audit_id"))
         if purpose == "select_transaction":
             begin_operation(context, booking_id, "cancel_or_refund")
+            context["current_operation"]["request_text"] = message
             return self._transaction_prompt(result, route)
         if purpose == "select_issue":
             begin_operation(context, booking_id, "booking_issue")
@@ -231,6 +232,7 @@ class ConversationOrchestrator:
             return self._failure(detail, route)
         remember_active_booking(context, rows[0]["booking_id"])
         begin_operation(context, rows[0]["booking_id"], "cancel_or_refund")
+        context["current_operation"]["request_text"] = message
         return self._transaction_prompt(detail, route)
 
     def _transaction_prompt(self, detail, route):
