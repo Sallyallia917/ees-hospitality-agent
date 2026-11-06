@@ -1,4 +1,5 @@
 """Explicit dialogue and operation state for authenticated booking conversations."""
+import uuid
 VALID_ORDER_STATUSES = {"UNKNOWN", "UNVERIFIED", "VERIFIED"}
 
 def default_context():
@@ -48,7 +49,7 @@ def begin_operation(context, booking_id, operation_type):
     state = context if isinstance(context, dict) else default_context()
     state["operation_sequence"] = int(state.get("operation_sequence") or 0) + 1
     operation = {
-        "operation_id": f"OP-{state['operation_sequence']:03d}",
+        "operation_id": "OP-" + uuid.uuid4().hex[:12].upper(),
         "booking_id": booking_id,
         "operation_type": operation_type,
         "stage": "awaiting_confirmation" if operation_type == "cancel_or_refund" else "awaiting_issue_details",
