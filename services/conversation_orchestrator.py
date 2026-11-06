@@ -41,11 +41,11 @@ class ConversationOrchestrator:
         if action == "booking_policy_lookup":
             return self._resolve_booking(message, principal, context, route, "policy")
         if action == "transaction_confirmation":
-            return self._transaction(message, principal, context, route)
+            return self._transaction(message, principal, context, route, history)
         if action == "transaction_handoff":
             if intent == "booking_issue":
                 return self._booking_issue(message, principal, context, route)
-            return self._transaction(message, principal, context, route)
+            return self._transaction(message, principal, context, route, history)
         if action == "booking_issue":
             return self._booking_issue(message, principal, context, route)
         return self._resolve_booking(message, principal, context, route, "detail")
@@ -166,7 +166,8 @@ class ConversationOrchestrator:
             "booking_lookup", data={"booking": result.get("booking"), "cancellation_policy": result.get("cancellation_policy")},
             audit_id=result.get("audit_id"))
 
-    def _transaction(self, message, principal, context, route):
+    def _transaction(self, message, principal, context, route, history=None):
+        history = history or []
         sub = route.get("sub_intent")
         current = context.get("current_operation") or {}
         if sub == "reject_transaction" and current.get("operation_type") == "cancel_or_refund" and current.get("stage") == "awaiting_confirmation":
