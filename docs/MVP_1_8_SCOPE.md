@@ -11,13 +11,17 @@ Move from a read-only booking assistant to a demonstrable service-request workfl
 - Deterministic status transition validation and append-only status history.
 - Reopen a resolved/closed ticket to PROCESSING when a guest reports the issue is unresolved.
 
+## Booking status display
+- Show the current synthetic booking status (`confirmed`, `completed`, `cancelled`) in the authenticated booking detail view.
+- Booking status is read-only in MVP 1.8; no cancellation, refund, check-in or booking mutation is performed.
+
 ## Status model
 SUBMITTED -> ASSIGNED -> PROCESSING -> PENDING_USER -> RESOLVED -> CLOSED
 Escalation is available from active workflow states. RESOLVED/CLOSED can return to PROCESSING for a verified follow-up.
 
 ## Explicitly out of scope
 - Real hotel PMS/OTA/CRM/ticketing integrations.
-- Real staff identity, production RBAC, external notifications or dispatch.
+- Real staff identity, production RBAC, external notifications or dispatch. The demo workbench is gated by a local PIN only.
 - Automated cancellation, refund, room change or inventory mutation.
 - Production SLA commitments, analytics dashboards, multi-property tenancy.
 
