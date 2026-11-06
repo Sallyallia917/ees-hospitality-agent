@@ -1,4 +1,6 @@
 from datetime import date
+import hmac
+import os
 import uuid
 from pathlib import Path
 
@@ -36,7 +38,10 @@ if "ees_conversation_orchestrator" not in st.session_state:
         st.session_state.ees_booking_service
     )
 if "ees_ticket_service" not in st.session_state:
-    st.session_state.ees_ticket_service = TicketService(ROOT / "data" / "tickets.sqlite3")
+    ticket_db_path = os.getenv("EES_TICKET_DB_PATH", str(ROOT / "data" / "tickets.sqlite3"))
+    st.session_state.ees_ticket_service = TicketService(ticket_db_path)
+if "ees_ticket_submission_key" not in st.session_state:
+    st.session_state.ees_ticket_submission_key = str(uuid.uuid4())
 
 def clear_authentication():
     st.session_state.pop("ees_principal", None)
@@ -207,6 +212,17 @@ with tab_booking:
                         prop = detail["property"]
                         policy = detail["cancellation_policy"]
                         st.markdown("#### 订单信息")
+                        status = booking.get("booking_status", "unknown")
+                        status_labels = {
+                            "confirmed": "已确认",
+                            "completed": "已完成",
+                            "cancelled": "已取消",
+                        }
+                        c_status, c_room, c_dates = st.columns(3)
+                        c_status.metric("订单状态", status_labels.get(status, status))
+                        c_room.metric("房型", booking.get("room_type") or "未提供")
+                        c_dates.metric("入住日期", str(booking.get("check_in") or "")[:10] or "未提供")
+                        st.caption("订单状态来自演示订单数据；当前版本仅查询和展示，不修改订单状态。")
                         st.json(booking)
                         st.markdown("#### 房源信息")
                         if prop:
@@ -258,9 +274,10 @@ with tab_tickets:
             result = st.session_state.ees_ticket_service.create_ticket(
                 guest_id=principal.customer_id, description=description, category=category,
                 priority=priority, booking_id=booking_ref.strip() or None,
-                idempotency_key=str(uuid.uuid4())
+                idempotency_key=st.session_state.ees_ticket_submission_key
             )
             if result["ok"]:
+                st.session_state.ees_ticket_submission_key = str(uuid.uuid4())
                 st.success("已创建演示工单：" + result["ticket"]["ticket_id"])
             else:
                 st.error("提交失败：" + result["error"])
@@ -277,30 +294,46 @@ with tab_tickets:
 
     st.divider()
     st.markdown("#### 员工处理工作台（演示）")
-    st.warning("此工作台没有生产级员工身份认证，仅用于展示工单状态流转；请勿用于真实客户数据。")
-    all_tickets = st.session_state.ees_ticket_service.list_tickets(staff=True)
-    if not all_tickets:
-        st.caption("暂无待处理工单。")
+    configured_staff_pin = os.getenv("EES_DEMO_STAFF_PIN", "")
+    if not configured_staff_pin:
+        st.info("员工工作台默认关闭。请在本地 .env 配置 EES_DEMO_STAFF_PIN 后启用；不要在公开演示环境使用真实客户数据。")
     else:
-        ticket_labels = {f'{t["ticket_id"]} · {t["category"]} · {t["status"]}': t["ticket_id"] for t in all_tickets}
-        selected_label = st.selectbox("选择工单", list(ticket_labels.keys()), key="staff_ticket_select")
-        selected_id = ticket_labels[selected_label]
-        selected = st.session_state.ees_ticket_service.get_ticket(selected_id, staff=True)["ticket"]
-        st.write(selected["description"])
-        st.caption("当前状态：" + selected["status"])
-        next_status = st.selectbox("更新状态", sorted(STATUSES), key="staff_ticket_status")
-        staff_note = st.text_input("处理备注", key="staff_ticket_note")
-        assignee = st.text_input("指派员工（演示标识）", key="staff_ticket_assignee")
-        if st.button("保存工单状态", key="staff_ticket_update"):
-            updated = st.session_state.ees_ticket_service.update_ticket(
-                selected_id, next_status, actor="demo-staff", note=staff_note,
-                assigned_to=assignee.strip() or None
+        with st.form("demo_staff_login_form"):
+            staff_pin_input = st.text_input("演示员工 PIN", type="password")
+            staff_login = st.form_submit_button("进入员工工作台")
+        if staff_login:
+            st.session_state.ees_demo_staff_authenticated = hmac.compare_digest(
+                staff_pin_input, configured_staff_pin
             )
-            if updated["ok"]:
-                st.success("状态已更新。")
+        if st.session_state.get("ees_demo_staff_authenticated"):
+            if st.button("退出员工工作台", key="staff_logout"):
+                st.session_state.ees_demo_staff_authenticated = False
                 st.rerun()
+            all_tickets = st.session_state.ees_ticket_service.list_tickets(staff=True)
+            if not all_tickets:
+                st.caption("暂无待处理工单。")
             else:
-                st.error("状态更新失败：" + updated["error"])
+                ticket_labels = {f'{t["ticket_id"]} · {t["category"]} · {t["status"]}': t["ticket_id"] for t in all_tickets}
+                selected_label = st.selectbox("选择工单", list(ticket_labels.keys()), key="staff_ticket_select")
+                selected_id = ticket_labels[selected_label]
+                selected = st.session_state.ees_ticket_service.get_ticket(selected_id, staff=True)["ticket"]
+                st.write(selected["description"])
+                st.caption("当前状态：" + selected["status"])
+                next_status = st.selectbox("更新状态", sorted(STATUSES), key="staff_ticket_status")
+                staff_note = st.text_input("处理备注", key="staff_ticket_note")
+                assignee = st.text_input("指派员工（演示标识）", key="staff_ticket_assignee")
+                if st.button("保存工单状态", key="staff_ticket_update"):
+                    updated = st.session_state.ees_ticket_service.update_ticket(
+                        selected_id, next_status, actor="demo-staff", note=staff_note,
+                        assigned_to=assignee.strip() or None
+                    )
+                    if updated["ok"]:
+                        st.success("状态已更新。")
+                        st.rerun()
+                    else:
+                        st.error("状态更新失败：" + updated["error"])
+        else:
+            st.warning("请先通过演示员工 PIN 验证。员工 PIN 仅用于本地原型隔离，不构成生产级 RBAC。")
 
 st.divider()
 st.caption(
