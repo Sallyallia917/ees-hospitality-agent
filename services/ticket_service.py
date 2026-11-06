@@ -49,16 +49,23 @@ class TicketService:
                     idempotency_key TEXT NOT NULL UNIQUE,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
-                    history_json TEXT NOT NULL
+                    history_json TEXT NOT NULL,
+                    metadata_json TEXT NOT NULL DEFAULT '{}',
+                    operation_id TEXT
                 )
             """)
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(tickets)").fetchall()}
+            if "metadata_json" not in columns:
+                conn.execute("ALTER TABLE tickets ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}'")
+            if "operation_id" not in columns:
+                conn.execute("ALTER TABLE tickets ADD COLUMN operation_id TEXT")
 
     @staticmethod
     def _now():
         return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     def create_ticket(self, guest_id, description, category="OTHER", booking_id=None,
-                      priority="NORMAL", idempotency_key=None):
+                      priority="NORMAL", idempotency_key=None, metadata=None, operation_id=None):
         if not guest_id or not str(guest_id).strip():
             return {"ok": False, "error": "guest_identity_required"}
         description = str(description or "").strip()
@@ -76,9 +83,14 @@ class TicketService:
                 return {"ok": True, "created": False, "ticket": self._row(existing)}
             ticket_id = "TKT-" + uuid.uuid4().hex[:10].upper()
             history = [{"status": "SUBMITTED", "at": now, "actor": "guest", "note": "ticket_created"}]
-            conn.execute("""INSERT INTO tickets VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            conn.execute("""INSERT INTO tickets (
+                ticket_id, guest_id, booking_id, category, description, priority, status,
+                assigned_to, idempotency_key, created_at, updated_at, history_json,
+                metadata_json, operation_id
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (ticket_id, str(guest_id), booking_id, category, description, priority,
-                 "SUBMITTED", None, key, now, now, json.dumps(history, ensure_ascii=False)))
+                 "SUBMITTED", None, key, now, now, json.dumps(history, ensure_ascii=False),
+                 json.dumps(metadata or {}, ensure_ascii=False), operation_id))
             row = conn.execute("SELECT * FROM tickets WHERE ticket_id=?", (ticket_id,)).fetchone()
             return {"ok": True, "created": True, "ticket": self._row(row)}
 
@@ -122,4 +134,5 @@ class TicketService:
     def _row(row):
         item = dict(row)
         item["history"] = json.loads(item.pop("history_json"))
+        item["metadata"] = json.loads(item.pop("metadata_json", "{}") or "{}")
         return item
