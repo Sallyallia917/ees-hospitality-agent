@@ -54,6 +54,7 @@ def begin_operation(context, booking_id, operation_type):
         "stage": "awaiting_confirmation" if operation_type == "cancel_or_refund" else "awaiting_issue_details",
         "user_confirmed": False,
         "status": "in_progress",
+        "ticket_id": None,
     }
     state["current_operation"] = operation
     state["active_booking_id"] = state["booking_id"] = booking_id
