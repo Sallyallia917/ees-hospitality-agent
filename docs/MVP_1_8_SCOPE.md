@@ -1,39 +1,49 @@
-# MVP 1.8 — Context-aware Service Ticket Agent
+# MVP 1.8 — Conversation-triggered Service Ticket Creation
 
 ## Product objective
-Move from a read-only booking assistant to a demonstrable service-request workflow: understand conversational follow-ups, create a traceable ticket, and support controlled status updates.
+When a guest reports a booking error and requests a refund, the AI resolves the booking identity, explains the request boundary, asks for explicit confirmation, and automatically creates a traceable human-review ticket from the conversation. Guests must not fill a separate ticket form.
 
-## In scope for this slice
-- Dialogue-act recognition: new request, supplement, correction, confirmation/rejection, status query, history reference, complaint, clarification.
-- SQLite persistence for synthetic service tickets.
-- Ticket ownership checks for guest reads; staff-only list/read path is explicit in the service API.
-- Idempotent ticket creation using a caller-supplied message key.
-- Deterministic status transition validation and append-only status history.
-- Reopen a resolved/closed ticket to PROCESSING when a guest reports the issue is unresolved.
+## Supported vertical slice
+1. Detect a booking-error/refund request (e.g. “我订错日期了，想退款”).
+2. Authenticate the guest and retrieve only bookings owned by that guest.
+3. If multiple bookings exist, ask the guest to select one.
+4. Re-read the selected booking and its bound cancellation policy.
+5. Ask the guest to confirm the specific booking and refund-request intent.
+6. Only after explicit confirmation, create one REFUND_REQUEST ticket automatically.
+7. Persist booking snapshot, policy snapshot, original request, recent dialogue context, confirmation flag, and operation ID as ticket metadata.
+8. Return the ticket ID in the conversation and expose it in the ticket tracking view.
+9. Ticket creation is idempotent per guest + operation ID.
 
-## Booking status display
-- Show the current synthetic booking status (`confirmed`, `completed`, `cancelled`) in the authenticated booking detail view.
-- Booking status is read-only in MVP 1.8; no cancellation, refund, check-in or booking mutation is performed.
+## State and safety rules
+- No ticket is created before explicit confirmation.
+- Rejection creates no ticket.
+- A ticket means “refund request submitted for human review”; it does not mean cancellation or refund executed.
+- No refund amount or eligibility is promised unless verified by an authoritative transaction system.
+- Guest ticket reads are ownership-scoped.
+- SQLite stores synthetic demo tickets; real PMS/OTA/payment/staff systems are not connected.
 
-## Status model
-SUBMITTED -> ASSIGNED -> PROCESSING -> PENDING_USER -> RESOLVED -> CLOSED
-Escalation is available from active workflow states. RESOLVED/CLOSED can return to PROCESSING for a verified follow-up.
+## Ticket schema
+The tickets table includes ticket identity, guest ID, booking ID, category, description, priority, status, assignee, idempotency key, timestamps, status history, metadata_json, and operation_id. Metadata contains source, intent, user_confirmed, booking snapshot, cancellation-policy snapshot, recent conversation history, operation ID, human-review requirement, and execution boundary.
 
-## Explicitly out of scope
-- Real hotel PMS/OTA/CRM/ticketing integrations.
-- Real staff identity, production RBAC, external notifications or dispatch. The demo workbench is gated by a local PIN only.
-- Automated cancellation, refund, room change or inventory mutation.
-- Production SLA commitments, analytics dashboards, multi-property tenancy.
+## Status lifecycle
+SUBMITTED -> ASSIGNED -> PROCESSING -> PENDING_USER -> RESOLVED -> CLOSED; escalation and controlled reopening are supported.
+
+## Out of scope
+- Real PMS/OTA booking mutations, cancellation, refund execution, payment operations.
+- Production staff authentication/RBAC, external notifications, dispatch and SLA.
+- Automatic ticket creation for every generic complaint or on-site service request; these require separate intent-specific confirmation and workflow definitions.
 
 ## Acceptance scenarios
-1. New maintenance/cleaning/room-service request can be stored.
-2. Same message idempotency key does not create a duplicate.
-3. Guest A cannot read Guest B's ticket.
-4. Staff path can list tickets and update status.
-5. Illegal status transition is rejected.
-6. Status history records actor, timestamp and note.
-7. Resolved issue can be reopened after guest says it remains unresolved.
-8. Dialogue act classifier distinguishes history reference, correction, supplement and status query.
+1. “我订错日期了，想退款” enters booking/refund flow, not generic booking issue.
+2. Multiple owned bookings require explicit selection.
+3. Selected booking and bound policy are re-read before confirmation.
+4. No ticket exists before confirmation.
+5. “确认退款” creates exactly one REFUND_REQUEST ticket.
+6. Ticket stores correct guest, booking, operation, request and policy/context metadata.
+7. Repeated create with same idempotency key returns the same ticket.
+8. “算了” creates no ticket.
+9. Guest A cannot read Guest B's ticket.
+10. Ticket status transition and audit history are persisted.
 
 ## Evidence policy
-All data is synthetic. Automated tests prove module behavior only; they do not prove real hotel integration, real employee authorization, production availability, or actual service resolution.
+Synthetic data only. Tests demonstrate application behavior, not actual refund execution, production integration, employee authorization, or real customer service completion.
