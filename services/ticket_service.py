@@ -25,11 +25,17 @@ PRIORITIES = {"LOW", "NORMAL", "HIGH", "URGENT"}
 class TicketService:
     def __init__(self, db_path="data/tickets.sqlite3"):
         self.db_path = str(db_path)
-        if self.db_path != ":memory:":
+        self._memory_connection = None
+        if self.db_path == ":memory:":
+            self._memory_connection = sqlite3.connect(":memory:")
+            self._memory_connection.row_factory = sqlite3.Row
+        else:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
     def _connect(self):
+        if self._memory_connection is not None:
+            return self._memory_connection
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
