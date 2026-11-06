@@ -8,7 +8,7 @@ def default_context():
         "active_booking_id": None, "candidate_booking_ids": [],
         "candidate_booking_summaries": [], "last_intent": None,
         "last_sub_intent": None, "pending_action": None, "dialogue_stage": "idle",
-        "pending_transaction_type": None, "pending_issue_text": None,
+        "pending_transaction_type": None, "pending_issue_text": None, "pending_transaction_request": None,
         "current_operation": None, "booking_operations": [], "operation_sequence": 0,
     }
 
@@ -80,6 +80,7 @@ def complete_operation(context, status, **extra):
     state["pending_action"] = None
     state["pending_transaction_type"] = None
     state["pending_issue_text"] = None
+    state["pending_transaction_request"] = None
     state["dialogue_stage"] = "idle"
     return operation
 
