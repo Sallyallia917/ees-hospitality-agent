@@ -239,9 +239,13 @@ class ConversationOrchestrator:
 
     def _transaction_prompt(self, detail, route):
         b = detail.get("booking") or {}
+        policy = detail.get("cancellation_policy") or {}
+        windows = policy.get("windows") or []
+        policy_text = "；".join(str(item.get("label") or "") for item in windows if item.get("label"))
+        policy_summary = (f"订单绑定的取消政策：{policy_text}。" if policy_text else "暂未取得完整的订单取消政策，退款资格和金额需要工作人员核验。")
         return self._simple(route, "awaiting_confirmation",
-            f"请确认是否针对以下订单申请取消/退款：{b.get('room_type') or '房型未记录'}，入住 {str(b.get('check_in') or '日期未记录')[:10]}，订单号 {b.get('booking_id')}。请回复“确认”或“不是/算了”。确认后我会转人工，不会直接执行取消或退款。",
-            "confirm_transaction", clarification=True, data={"booking": b}, audit_id=detail.get("audit_id"))
+            f"我核对到订单：{b.get('room_type') or '房型未记录'}，入住 {str(b.get('check_in') or '日期未记录')[:10]}，订单号 {b.get('booking_id')}。{policy_summary}请确认是否为这笔订单提交退款申请工单？回复“确认退款”或“算了”。确认后系统会自动创建工单交由人工审核，但不会直接取消订单或执行退款。",
+            "confirm_transaction", clarification=True, data={"booking": b, "cancellation_policy": policy}, audit_id=detail.get("audit_id"))
 
     def _booking_issue(self, message, principal, context, route):
         current = context.get("current_operation") or {}
