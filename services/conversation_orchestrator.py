@@ -1,7 +1,9 @@
 """Stateful orchestration for authenticated, read-only booking queries and safe handoff."""
 import re
+import uuid
 from services.identity import principal_is_valid
 from services.booking_service import BookingService
+from services.ticket_service import TicketService
 from services.intent_router import route_question
 from services.response_generator import generate_booking_answer, _policy_answer
 from services.context_manager import (
@@ -13,8 +15,9 @@ BOOKING_ID_RE = re.compile(r"\bDEMO-BOOKING-\d{4,}\b", re.IGNORECASE)
 ORDINALS = {"一": 1, "二": 2, "三": 3, "1": 1, "2": 2, "3": 3}
 
 class ConversationOrchestrator:
-    def __init__(self, booking_service=None):
+    def __init__(self, booking_service=None, ticket_service=None):
         self.booking_service = booking_service or BookingService()
+        self.ticket_service = ticket_service or TicketService(':memory:')
 
     def handle_booking_query(self, message, principal=None, history=None, context=None):
         history = history or []
@@ -170,10 +173,48 @@ class ConversationOrchestrator:
                                 "transaction_aborted", data={"operation": completed})
         if sub == "confirm_transaction" and current.get("operation_type") == "cancel_or_refund" and current.get("stage") == "awaiting_confirmation":
             booking_id = current.get("booking_id")
-            completed = complete_operation(context, "handed_off", user_confirmed=True)
-            return self._simple(route, "human_handoff",
-                f"已记录订单 {booking_id} 的取消/退款申请意愿。当前演示版本不会执行取消或退款，也未创建真实服务单，请联系工作人员核对订单渠道、政策及授权后处理。您可以继续处理其他订单。",
-                "transaction_handoff", needs_human=True, data={"booking_id": booking_id, "operation": completed})
+            detail = self.booking_service.get_my_booking(principal, booking_id)
+            if detail.get("status") not in ("ok", "data_incomplete"):
+                return self._simple(route, "ticket_creation_blocked",
+                    "暂时无法重新核验这笔订单，因此没有创建退款工单。请稍后重试或联系工作人员。",
+                    "ticket_creation_blocked", needs_human=True, data={"booking_id": booking_id})
+            booking = detail.get("booking") or {}
+            policy = detail.get("cancellation_policy") or {}
+            operation_id = current.get("operation_id") or str(uuid.uuid4())
+            ticket_result = self.ticket_service.create_ticket(
+                guest_id=principal.customer_id,
+                booking_id=booking_id,
+                category="REFUND_REQUEST",
+                priority="HIGH",
+                description=f"住客已在 AI 对话中确认申请取消/退款。原始诉求：{current.get('request_text') or message}",
+                idempotency_key=f"{principal.customer_id}:{operation_id}:refund",
+                operation_id=operation_id,
+                metadata={
+                    "source": "ai_conversation",
+                    "intent": "cancel_or_refund",
+                    "user_confirmed": True,
+                    "booking_snapshot": booking,
+                    "cancellation_policy_snapshot": policy,
+                    "conversation_history": history[-8:],
+                    "operation_id": operation_id,
+                    "requires_human_review": True,
+                    "execution_boundary": "ticket_only_no_refund_execution",
+                },
+            )
+            if not ticket_result.get("ok"):
+                return self._simple(route, "ticket_creation_failed",
+                    "已收到您的确认，但服务工单暂时创建失败；系统没有执行退款。请稍后重试，或联系工作人员。",
+                    "ticket_creation_failed", needs_human=True,
+                    data={"booking_id": booking_id, "error": ticket_result.get("error")})
+            completed = complete_operation(
+                context, "ticket_created", user_confirmed=True,
+                ticket_id=ticket_result["ticket"]["ticket_id"]
+            )
+            return self._simple(route, "ticket_created",
+                f"已为订单 {booking_id} 自动创建退款申请工单，工单编号 {ticket_result['ticket']['ticket_id']}。工作人员将核验订单渠道、取消政策及退款资格；当前仅提交申请，尚未执行取消或退款。",
+                "automatic_ticket_created", needs_human=True,
+                data={"booking_id": booking_id, "ticket": ticket_result["ticket"],
+                      "operation": completed})
         # New transaction requests must not inherit a previous operation's booking.
         result = self.booking_service.search_my_bookings(principal, limit=3)
         if result.get("status") != "ok":
