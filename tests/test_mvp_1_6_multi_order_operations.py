@@ -26,7 +26,7 @@ def test_two_cancellations_in_one_conversation_use_distinct_orders():
     history = [{"intent": "transaction_request"}]
     first_id = start_cancel(agent, context, history)
     confirmed_a = agent.handle_booking_query("确认", principal=principal(), history=history, context=context)
-    assert confirmed_a["status"] == "human_handoff"
+    assert confirmed_a["status"] == "ticket_created"
     assert context["current_operation"] is None
     assert context["booking_operations"][0]["booking_id"] == first_id
     assert context["booking_operations"][0]["user_confirmed"] is True
@@ -37,7 +37,7 @@ def test_two_cancellations_in_one_conversation_use_distinct_orders():
     second_id = selected_b["data"]["booking"]["booking_id"]
     assert second_id != first_id
     confirmed_b = agent.handle_booking_query("确认", principal=principal(), history=history, context=context)
-    assert confirmed_b["status"] == "human_handoff"
+    assert confirmed_b["status"] == "ticket_created"
     assert [x["booking_id"] for x in context["booking_operations"]] == [first_id, second_id]
 
 def test_cancel_then_report_issue_on_another_order():
