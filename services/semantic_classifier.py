@@ -87,6 +87,9 @@ def classify_by_rules(query, history=None, context=None):
     if not no_booking and any(x in text for x in list_markers):
         return _result("booking_list_query", "booking_list", .99)
 
+    if any(x in text for x in ("订单订错", "预定错误", "预订错误", "订错了", "订单有误", "订单信息有误", "订单信息错", "订房订错", "预定订错")) and any(x in text for x in ("退款", "退钱", "取消订单", "申请取消")):
+        return _result("transaction_request", "booking_error_refund", .99)
+
     if any(x in text for x in ("订单订错", "预定错误", "预订错误", "订错了",
                                "订单有误", "订单信息有误", "订单信息错", "订房订错", "预定订错")):
         return _result("booking_issue", "booking_error", .98)
