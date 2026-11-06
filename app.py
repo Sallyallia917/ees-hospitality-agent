@@ -40,8 +40,7 @@ if "ees_conversation_orchestrator" not in st.session_state:
 if "ees_ticket_service" not in st.session_state:
     ticket_db_path = os.getenv("EES_TICKET_DB_PATH", str(ROOT / "data" / "tickets.sqlite3"))
     st.session_state.ees_ticket_service = TicketService(ticket_db_path)
-if "ees_ticket_submission_key" not in st.session_state:
-    st.session_state.ees_ticket_submission_key = str(uuid.uuid4())
+st.session_state.ees_conversation_orchestrator.ticket_service = st.session_state.ees_ticket_service
 
 def clear_authentication():
     st.session_state.pop("ees_principal", None)
@@ -89,7 +88,7 @@ with st.sidebar:
     st.caption("演示环境说明")
     st.info("订单查询为只读；取消政策仅展示，不执行取消或退款。")
 
-tab_qa, tab_booking, tab_tickets = st.tabs(["门店知识问答", "我的订单", "服务工单"])
+tab_qa, tab_booking, tab_tickets = st.tabs(["门店知识问答", "我的订单", "工单跟踪"])
 
 with tab_qa:
     kb = load_knowledge(ROOT / "knowledge" / "property_faq.json")
@@ -259,38 +258,31 @@ with tab_booking:
 
 
 with tab_tickets:
-    st.subheader("服务请求与工单")
-    st.caption("演示工单持久化于本地 SQLite；数据为合成演示，不代表真实员工接单或现场服务已执行。")
+    st.subheader("对话自动创建的工单")
+    st.caption("工单由 AI 对话中的确认动作自动创建；本页面仅用于查看和跟踪，不提供住客手动创建入口。")
     if principal is None:
-        st.info("请先在左侧完成演示身份认证后提交或查询本人服务工单。")
+        st.info("请先完成演示身份认证。")
     else:
-        with st.form("ticket_create_form"):
-            category = st.selectbox("服务类型", ["CLEANING", "ROOM_SERVICE", "MAINTENANCE", "COMPLAINT", "BOOKING_ISSUE", "OTHER"])
-            description = st.text_area("问题或服务需求", placeholder="例如：房间空调不制冷，希望工作人员检查。")
-            priority = st.selectbox("优先级", ["LOW", "NORMAL", "HIGH", "URGENT"], index=1)
-            booking_ref = st.text_input("关联订单号（可选）")
-            ticket_submit = st.form_submit_button("提交服务请求", type="primary")
-        if ticket_submit:
-            result = st.session_state.ees_ticket_service.create_ticket(
-                guest_id=principal.customer_id, description=description, category=category,
-                priority=priority, booking_id=booking_ref.strip() or None,
-                idempotency_key=st.session_state.ees_ticket_submission_key
-            )
-            if result["ok"]:
-                st.session_state.ees_ticket_submission_key = str(uuid.uuid4())
-                st.success("已创建演示工单：" + result["ticket"]["ticket_id"])
-            else:
-                st.error("提交失败：" + result["error"])
-        st.markdown("#### 我的工单")
         mine = st.session_state.ees_ticket_service.list_tickets(guest_id=principal.customer_id)
         if mine:
+            status_labels = {
+                "SUBMITTED": "已提交，等待人工接单",
+                "ASSIGNED": "已指派",
+                "PROCESSING": "处理中",
+                "PENDING_USER": "等待住客反馈",
+                "RESOLVED": "已解决",
+                "CLOSED": "已关闭",
+                "ESCALATED": "已升级人工处理",
+            }
             for ticket in mine:
-                with st.expander(f'{ticket["ticket_id"]} · {ticket["category"]} · {ticket["status"]}'):
+                with st.expander(f'{ticket["ticket_id"]} · {ticket["category"]} · {status_labels.get(ticket["status"], ticket["status"])}'):
                     st.write(ticket["description"])
-                    st.caption(f'优先级：{ticket["priority"]} · 创建：{ticket["created_at"]}')
+                    st.caption(f'关联订单：{ticket.get("booking_id") or "无"} · 优先级：{ticket["priority"]} · 创建：{ticket["created_at"]}')
+                    if ticket.get("metadata"):
+                        st.json(ticket["metadata"])
                     st.json(ticket["history"])
         else:
-            st.caption("当前没有本人演示工单。")
+            st.caption("当前没有由对话自动创建的工单。请在对话中提出订单问题或退款申请。")
 
     st.divider()
     st.markdown("#### 员工处理工作台（演示）")
@@ -337,6 +329,6 @@ with tab_tickets:
 
 st.divider()
 st.caption(
-    "能力边界：当前订单能力仅用于合成数据的身份认证与只读查询；"
-    "不连接真实订单系统，不执行取消、退款、改期或换房；工单仅为本地合成演示，不连接真实派单系统。"
+    "能力边界：当前订单能力使用合成数据进行身份认证与只读查询；"
+    "AI 对话确认后可自动创建本地演示退款/订单问题工单，但不连接真实 PMS/OTA，不执行退款或取消，不连接真实派单系统。"
 )
