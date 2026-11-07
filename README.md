@@ -1,4 +1,4 @@
-# EES Hospitality Agent — MVP 1.8 (vertical-slice preview)
+# EES Hospitality Agent — MVP 1.9 (vertical-slice preview)
 
 面向民宿与酒店服务场景的 AI 服务助手原型。演示门店、账户、订单、政策和案例均为合成数据，不代表真实门店规则或生产效果。
 
@@ -13,11 +13,13 @@ streamlit run app.py
 
 可选 LLM：复制 \`.env.example\` 为 \`.env\`，配置兼容 OpenAI Chat Completions 的 API key、base URL 和 model。未配置或调用失败时，系统回退到规则分类和确定性回复。不要提交密钥。
 
-## MVP 1.8 capabilities (two-day vertical slice)
+## MVP 1.9 capabilities
 - **对话行为识别模块**：新增历史指代、补充、纠正、状态查询、投诉等 dialogue-act 识别；历史指代型投诉不再默认落入公共 FAQ。
-- **服务工单持久化**：新增 SQLite TicketService，支持创建、查询、列表、指派、状态更新及状态历史。
+- **MECE 统一工单分类**：一级类别统一为交易与订单、住宿服务、投诉与体验、票据与财务、咨询与其他；issue_type 表达具体问题，handling_channel 表达后续处理团队/渠道，避免把问题内容、服务地点和处理方式混为一级分类。
+- **服务工单持久化**：SQLite TicketService 支持创建、查询、列表、指派、状态更新及状态历史，并将旧分类映射到新分类。
 - **工单安全边界**：住客读取按 guest_id 校验归属；非法状态流转拒绝；创建支持幂等键；解决后仍未解决可重新进入处理中。
-- **对话自动建单**：住客在对话中提出订错/退款诉求，系统核验本人订单并要求确认；确认后自动创建 REFUND_REQUEST 工单，关联订单、政策快照、原始诉求和最近对话上下文。住客界面不提供手动建单表单。
+- **对话自动建单**：覆盖退款/订单错误、现场住宿服务、投诉体验和发票申请；系统核验本人订单、收集必要信息并复述事项，住客明确确认后自动创建对应一级类别工单。住客界面不提供手动建单表单。
+- **工单语义分层**：例如空调维修为 STAY_SERVICE / ROOM_MAINTENANCE；卫生差投诉为 COMPLAINT_EXPERIENCE / HYGIENE_COMPLAINT；发票为 BILLING_DOCUMENT / INVOICE。
 - **工单跟踪与处理**：住客可查看对话自动创建的工单；演示员工工作台可更新工单状态，员工工作台尚无生产级 RBAC。
 
 ## MVP 1.6 capabilities
@@ -104,4 +106,5 @@ python -m evals.run_mvp_1_2_evaluation
 - MVP 1.4: 订单列表/选择、多轮对话状态、个人订单语义识别、订单异常转人工及证据约束回复。
 - MVP 1.5: 订单取消/退款与异常处理闭环、订单级政策查询和显式确认。
 - **MVP 1.6: 多订单、多操作会话状态；支持同一会话连续处理不同订单，并保留各笔操作记录。**
-- **MVP 1.8 preview: 对话确认后自动创建退款工单，关联订单/政策/会话上下文；SQLite 持久化、幂等、工单状态流转与住客跟踪。**
+- MVP 1.8 preview: 对话确认后自动创建退款工单，关联订单/政策/会话上下文；SQLite 持久化、幂等、工单状态流转与住客跟踪。
+- **MVP 1.9: MECE 统一工单分类与对话式建单；覆盖订单问题、住宿服务、投诉体验、发票申请；新增 issue_type / handling_channel，兼容旧分类。详见 docs/MVP_1_9_SCOPE.md。**
