@@ -310,9 +310,9 @@ class ConversationOrchestrator:
                 "FACILITY_COMPLAINT" if intent == "complaint" and any(x in combined_text for x in ("电梯", "设施")) else
                 "HYGIENE_COMPLAINT" if any(x in message for x in ("卫生", "脏", "清洁")) and intent == "complaint" else
                 "NOISE" if any(x in message for x in ("吵", "噪音")) and intent == "complaint" else
+                "ROOM_MAINTENANCE" if any(x in message for x in ("空调", "维修", "漏水", "坏了")) else
                 "MERCHANT_COMPLAINT" if intent == "complaint" else
                 "ROOM_CLEANING" if any(x in message for x in ("打扫", "清洁", "卫生")) else
-                "ROOM_MAINTENANCE" if any(x in message for x in ("空调", "维修", "漏水", "坏了")) else
                 "ROOM_AMENITY" if any(x in message for x in ("电梯", "设施")) else "OTHER")
             context["pending_ticket_request"] = {"intent": intent, "request_text": (facility_context + "；" + str(message)).strip("； "), "issue_type": issue_type}
             context["pending_facility_issue"] = None
@@ -383,8 +383,12 @@ class ConversationOrchestrator:
                       "issue_type": pending.get("issue_type") or "OTHER",
                       "user_confirmed": True, "requires_human_review": True,
                       "handling_channel": ("ON_SITE" if category == "STAY_SERVICE" else
-                                           "MULTI_TEAM" if pending.get("issue_type") in {"HYGIENE_COMPLAINT", "NOISE", "FACILITY_COMPLAINT"} else
+                                           "MULTI_TEAM" if pending.get("issue_type") in {"HYGIENE_COMPLAINT", "NOISE", "FACILITY_COMPLAINT", "ROOM_MAINTENANCE"} else
                                            "BACK_OFFICE" if category == "BILLING_DOCUMENT" else "MANAGER_REVIEW"),
+                      "issue_location": ("BATHROOM" if any(x in str(pending.get("request_text") or "") for x in ("卫生间", "浴室", "厕所")) else
+                                         "GUEST_ROOM" if any(x in str(pending.get("request_text") or "") for x in ("客房", "房间", "房内", "卧室")) else
+                                         "PUBLIC_AREA" if any(x in str(pending.get("request_text") or "") for x in ("大厅", "走廊", "餐厅", "停车场", "公共区域")) else
+                                         "FRONT_DESK" if "前台" in str(pending.get("request_text") or "") else "UNKNOWN"),
                       "booking_snapshot": detail.get("booking") or {},
                       "invoice_details": pending.get("details") if intent == "invoice_request" else None,
                       "execution_boundary": "ticket_only_no_service_execution"})
