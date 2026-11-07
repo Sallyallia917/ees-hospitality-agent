@@ -118,7 +118,7 @@ def classify_by_rules(query, history=None, context=None):
 
     if any(x in text for x in ("发票", "开发票", "开票", "票据", "抬头", "税号")):
         return _result("invoice_request", "invoice", .98)
-    if any(x in text for x in ("投诉", "赔偿", "差评", "卫生太差", "脏乱差", "很脏", "吵得睡不着", "房间吵", "噪音", "没有电梯还")):
+    if any(x in text for x in ("投诉", "赔偿", "差评", "卫生太差", "卫生差", "卫生问题反馈", "房间卫生", "脏乱差", "很脏", "吵得睡不着", "房间吵", "噪音", "没有电梯还")):
         return _result("complaint", "experience_complaint", .98)
     if any(x in text for x in ("投诉", "赔偿", "差评", "没人处理", "不回复", "态度差",
                                "要求道歉", "反馈服务问题", "服务不满意", "不满意", "没回应", "未回应")):
