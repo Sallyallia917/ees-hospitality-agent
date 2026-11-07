@@ -57,7 +57,7 @@ def test_cancel_request_requires_order_selection_and_explicit_confirmation():
     )
     assert confirmed["status"] == "ticket_created"
     assert confirmed["needs_human"] is True
-    assert confirmed["data"]["ticket"]["category"] == "REFUND_REQUEST"
+    assert confirmed["data"]["ticket"]["category"] == "TRANSACTION_ORDER"
     assert confirmed["data"]["ticket"]["booking_id"] == selected["data"]["booking"]["booking_id"]
     assert "尚未执行取消或退款" in confirmed["answer"]
 
@@ -70,13 +70,15 @@ def test_booking_issue_asks_order_then_issue_details():
         "高级双床房", principal=principal(),
         history=[{"intent": "booking_issue"}], context=context
     )
-    assert selected["status"] == "awaiting_issue_details"
-    final = agent.handle_booking_query(
+    assert selected["status"] == "awaiting_ticket_confirmation"
+    supplemented = agent.handle_booking_query(
         "入住日期写错了", principal=principal(),
         history=[{"intent": "booking_issue"}], context=context
     )
-    assert final["status"] == "human_handoff"
-    assert final["needs_human"] is True
+    assert supplemented["status"] == "awaiting_ticket_confirmation"
+    final = agent.handle_booking_query("确认", principal=principal(), context=context)
+    assert final["status"] == "ticket_created"
+    assert final["data"]["ticket"]["category"] == "TRANSACTION_ORDER"
 
 def test_candidate_selection_rejects_ambiguous_property_match():
     context = {}
@@ -101,7 +103,7 @@ def test_refund_confirmation_automatically_creates_conversation_ticket(tmp_path)
     confirmed = agent.handle_booking_query("确认退款", principal=principal(), history=[{"intent": "transaction_request"}], context=context)
     assert confirmed["status"] == "ticket_created"
     ticket = confirmed["data"]["ticket"]
-    assert ticket["category"] == "REFUND_REQUEST"
+    assert ticket["category"] == "TRANSACTION_ORDER"
     assert ticket["booking_id"] == selected["data"]["booking"]["booking_id"]
     assert ticket["metadata"]["source"] == "ai_conversation"
     assert ticket["metadata"]["user_confirmed"] is True
