@@ -25,6 +25,7 @@ class ConversationOrchestrator:
         route = route_question(message, context, history)
         if context.get("pending_action") == "clarify_facility_context" and route.get("intent") == "public_knowledge_inquiry":
             context["pending_action"] = None
+            context["pending_facility_issue"] = None
         remember_intent(context, route.get("intent"), route.get("sub_intent"))
         action, intent = route.get("action"), route.get("intent")
 
@@ -44,6 +45,7 @@ class ConversationOrchestrator:
             return self._resolve_booking(message, principal, context, route, "policy")
         if action == "clarify_facility_context":
             context["pending_action"] = "clarify_facility_context"
+            context["pending_facility_issue"] = str(message)
             return self._simple(route, "needs_clarification", route.get("response") or "您是在咨询设施信息，还是希望反馈入住体验问题？",
                                 "clarify_facility_context", clarification=True)
         if action == "service_ticket_request":
@@ -302,14 +304,18 @@ class ConversationOrchestrator:
                 "confirm_service_ticket", clarification=True, needs_human=True)
         intent = route.get("intent")
         if not pending or pending.get("intent") != intent:
+            facility_context = str(context.get("pending_facility_issue") or "")
+            combined_text = facility_context + " " + str(message)
             issue_type = "BOOKING_ERROR" if intent == "booking_issue" else "INVOICE" if intent == "invoice_request" else (
+                "FACILITY_COMPLAINT" if intent == "complaint" and any(x in combined_text for x in ("电梯", "设施")) else
                 "HYGIENE_COMPLAINT" if any(x in message for x in ("卫生", "脏", "清洁")) and intent == "complaint" else
                 "NOISE" if any(x in message for x in ("吵", "噪音")) and intent == "complaint" else
                 "MERCHANT_COMPLAINT" if intent == "complaint" else
                 "ROOM_CLEANING" if any(x in message for x in ("打扫", "清洁", "卫生")) else
                 "ROOM_MAINTENANCE" if any(x in message for x in ("空调", "维修", "漏水", "坏了")) else
                 "ROOM_AMENITY" if any(x in message for x in ("电梯", "设施")) else "OTHER")
-            context["pending_ticket_request"] = {"intent": intent, "request_text": str(message), "issue_type": issue_type}
+            context["pending_ticket_request"] = {"intent": intent, "request_text": (facility_context + "；" + str(message)).strip("； "), "issue_type": issue_type}
+            context["pending_facility_issue"] = None
             pending = context["pending_ticket_request"]
         result = self.booking_service.search_my_bookings(principal, limit=3)
         if result.get("status") != "ok":
@@ -369,7 +375,7 @@ class ConversationOrchestrator:
         operation_id = str(uuid.uuid4())
         ticket = self.ticket_service.create_ticket(
             guest_id=principal.customer_id, booking_id=booking_id, category=category,
-            priority="HIGH" if intent == "complaint" else "NORMAL",
+            priority="HIGH" if intent == "complaint" and any(x in str(pending.get("request_text") or "") for x in ("影响休息", "多次未处理", "严重", "无法入住")) else "NORMAL",
             description=(pending.get("request_text") or "") + (("；补充信息：" + pending["details"]) if pending.get("details") else ""),
             idempotency_key=f"{principal.customer_id}:{operation_id}:service",
             operation_id=operation_id,
