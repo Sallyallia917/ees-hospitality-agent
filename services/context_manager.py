@@ -1,4 +1,5 @@
 """Explicit dialogue and operation state for authenticated booking conversations."""
+import uuid
 VALID_ORDER_STATUSES = {"UNKNOWN", "UNVERIFIED", "VERIFIED"}
 
 def default_context():
@@ -7,7 +8,7 @@ def default_context():
         "active_booking_id": None, "candidate_booking_ids": [],
         "candidate_booking_summaries": [], "last_intent": None,
         "last_sub_intent": None, "pending_action": None, "dialogue_stage": "idle",
-        "pending_transaction_type": None, "pending_issue_text": None,
+        "pending_transaction_type": None, "pending_issue_text": None, "pending_transaction_request": None, "pending_ticket_request": None, "pending_ticket_booking_id": None, "pending_facility_issue": None,
         "current_operation": None, "booking_operations": [], "operation_sequence": 0,
     }
 
@@ -48,12 +49,13 @@ def begin_operation(context, booking_id, operation_type):
     state = context if isinstance(context, dict) else default_context()
     state["operation_sequence"] = int(state.get("operation_sequence") or 0) + 1
     operation = {
-        "operation_id": f"OP-{state['operation_sequence']:03d}",
+        "operation_id": "OP-" + uuid.uuid4().hex[:12].upper(),
         "booking_id": booking_id,
         "operation_type": operation_type,
         "stage": "awaiting_confirmation" if operation_type == "cancel_or_refund" else "awaiting_issue_details",
         "user_confirmed": False,
         "status": "in_progress",
+        "ticket_id": None,
     }
     state["current_operation"] = operation
     state["active_booking_id"] = state["booking_id"] = booking_id
@@ -78,6 +80,7 @@ def complete_operation(context, status, **extra):
     state["pending_action"] = None
     state["pending_transaction_type"] = None
     state["pending_issue_text"] = None
+    state["pending_transaction_request"] = None
     state["dialogue_stage"] = "idle"
     return operation
 

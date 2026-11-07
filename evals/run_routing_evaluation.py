@@ -22,7 +22,7 @@ def run():
     (ROOT/"reports").mkdir(exist_ok=True)
     (ROOT/"reports"/"routing_evaluation.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
     (ROOT/"reports"/"routing_evaluation.md").write_text(
-      "# MVP 1.1 路由评测\n\n"+
+      "# MVP 1.9 路由回归评测\n\n"+
       f"- 测试案例：{report['total']}\n- 通过：{report['passed']}\n- 失败：{report['failed']}\n\n"+
       "> 测试基于模拟业务语料，不代表真实业务准确率。\n",encoding="utf-8")
     return report

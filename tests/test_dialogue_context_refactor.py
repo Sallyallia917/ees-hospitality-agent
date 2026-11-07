@@ -29,7 +29,7 @@ def test_first_person_booking_fields_do_not_fall_into_public_faq():
 def test_booking_error_routes_to_human_not_rag():
     for question in ("订单订错了", "预定错误", "我的订单信息有误"):
         route = route_question(question)
-        assert route["action"] == "transaction_handoff"
+        assert route["action"] == "service_ticket_request"
         assert route["intent"] == "booking_issue"
 
 def test_public_facility_faq_stays_in_rag():
