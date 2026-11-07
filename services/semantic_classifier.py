@@ -68,6 +68,12 @@ def classify_by_rules(query, history=None, context=None):
         if len(matches) > 1:
             return _result("booking_selection", "ambiguous_booking_selection", .90)
 
+    if context.get("pending_action") == "clarify_facility_context":
+        if any(x in text for x in ("不方便", "影响", "投诉", "反馈", "很麻烦", "已经入住", "希望处理")):
+            return _result("complaint", "facility_impact_complaint", .95, "context_rules")
+        if any(x in text for x in ("只是咨询", "想了解", "问一下", "有吗", "有没有")):
+            return _result("public_knowledge_inquiry", "facility_question", .95, "context_rules")
+        return _result("service_request", "facility_or_complaint_clarification", .70)
     if context.get("pending_action") == "collect_invoice_details":
         return _result("invoice_request", "invoice_details", .99)
     if context.get("pending_action") == "confirm_service_ticket":
