@@ -19,10 +19,11 @@ The primary category describes the **business responsibility / nature of the req
 - category: exactly one primary business category above.
 - issue_type: specific problem, e.g. BOOKING_ERROR, CANCELLATION_REFUND, ROOM_CLEANING, ROOM_MAINTENANCE, ROOM_AMENITY, NOISE, HYGIENE_COMPLAINT, MERCHANT_COMPLAINT, INVOICE.
 - handling_channel: downstream handling route, e.g. ON_SITE, MANAGER_REVIEW, BACK_OFFICE, MULTI_TEAM. This is not a primary category.
+- issue_location: where the problem occurs, e.g. GUEST_ROOM, BATHROOM, PUBLIC_AREA, FRONT_DESK, UNKNOWN. It is not a category.
 - booking_id: the booking the ticket refers to. Booking identity must be selected and revalidated.
 - priority: operational urgency, independent of category.
 
-This resolves the dimension collision: cleaning, AC repair, and towel delivery are STAY_SERVICE; a dirty-room complaint is COMPLAINT_EXPERIENCE with issue_type=HYGIENE_COMPLAINT and may be routed to on-site staff plus a manager; a neutral elevator availability question is consultation, not a ticket. “没有电梯” without context is ambiguous, so the assistant asks whether the guest is asking about a facility or reporting an impact.
+This resolves the dimension collision: cleaning, AC repair, and towel delivery are STAY_SERVICE; a dirty-room complaint is COMPLAINT_EXPERIENCE with issue_type=HYGIENE_COMPLAINT and may be routed to on-site staff plus a manager; a neutral elevator availability question is consultation, not a ticket. “客房” is a location (issue_location=GUEST_ROOM), not a primary category. “现场服务” is a handling channel, not a primary category. “没有电梯” without context is ambiguous, so the assistant asks whether the guest is asking about a facility or reporting an impact.
 
 ## Conversation workflows
 1. Refund request: preserve MVP 1.8 explicit confirmation and create TRANSACTION_ORDER / CANCELLATION_REFUND. No actual cancellation or refund.
@@ -56,4 +57,4 @@ The original input label is converted into an issue_type so old call sites do no
 - Multi-booking selection remains explicit.
 - No ticket before confirmation; rejection creates no ticket.
 - Invoice details are collected before confirmation.
-- Ticket metadata stores category, issue type, handling channel, booking snapshot, confirmation and execution boundary.
+- Ticket metadata stores category, issue type, issue location, handling channel, booking snapshot, confirmation and execution boundary.
