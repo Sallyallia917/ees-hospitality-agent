@@ -23,7 +23,7 @@ st.set_page_config(page_title="EES 酒旅服务助手", page_icon="🏡", layout
 
 st.title("EES 酒旅服务助手")
 st.caption(
-    "MVP 1.8 · 多轮上下文 + 订单只读查询 + 服务工单演示。"
+    "MVP 1.9 · 多轮上下文 + 订单只读查询 + MECE 统一工单演示。"
     "所有订单、账号和政策均为合成演示数据，不连接真实酒店系统。"
 )
 
@@ -274,8 +274,15 @@ with tab_tickets:
                 "CLOSED": "已关闭",
                 "ESCALATED": "已升级人工处理",
             }
+            category_labels = {
+                "TRANSACTION_ORDER": "交易与订单",
+                "STAY_SERVICE": "住宿服务",
+                "COMPLAINT_EXPERIENCE": "投诉与体验",
+                "BILLING_DOCUMENT": "票据与财务",
+                "CONSULTATION_OTHER": "咨询与其他",
+            }
             for ticket in mine:
-                with st.expander(f'{ticket["ticket_id"]} · {ticket["category"]} · {status_labels.get(ticket["status"], ticket["status"])}'):
+                with st.expander(f'{ticket["ticket_id"]} · {category_labels.get(ticket["category"], ticket["category"])} · {status_labels.get(ticket["status"], ticket["status"])}'):
                     st.write(ticket["description"])
                     st.caption(f'关联订单：{ticket.get("booking_id") or "无"} · 优先级：{ticket["priority"]} · 创建：{ticket["created_at"]}')
                     if ticket.get("metadata"):
@@ -330,5 +337,6 @@ with tab_tickets:
 st.divider()
 st.caption(
     "能力边界：当前订单能力使用合成数据进行身份认证与只读查询；"
-    "AI 对话确认后可自动创建本地演示退款/订单问题工单，但不连接真实 PMS/OTA，不执行退款或取消，不连接真实派单系统。"
+    "AI 对话确认后可自动创建本地演示工单；一级类别采用交易与订单、住宿服务、投诉与体验、票据与财务、咨询与其他，"
+    "具体问题通过 issue_type 标记；不连接真实 PMS/OTA，不执行退款或现场服务，不连接真实派单系统。"
 )
