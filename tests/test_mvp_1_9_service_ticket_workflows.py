@@ -84,3 +84,14 @@ def test_invoice_ticket_collects_details_before_confirmation(tmp_path):
     assert created["status"] == "ticket_created"
     assert created["data"]["ticket"]["category"] == "BILLING_DOCUMENT"
     assert created["data"]["ticket"]["metadata"]["invoice_details"]
+
+
+def test_facility_statement_is_clarified_then_routed_as_experience_complaint():
+    agent = ConversationOrchestrator(BookingService(), TicketService(":memory:"))
+    context = {}
+    first = agent.handle_booking_query("没有电梯", context=context)
+    assert first["status"] == "needs_clarification"
+    assert context["pending_action"] == "clarify_facility_context"
+    second = agent.handle_booking_query("已经入住，很不方便，希望反馈", principal=principal(), context=context)
+    assert second["status"] == "needs_clarification"
+    assert context["pending_ticket_request"]["issue_type"] == "FACILITY_COMPLAINT"
