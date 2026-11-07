@@ -91,10 +91,16 @@ class TicketService:
         description = str(description or "").strip()
         if not description:
             return {"ok": False, "error": "description_required"}
-        category = normalize_category(category)
+        original_category = str(category or "OTHER").upper()
+        category = normalize_category(original_category)
         priority = str(priority).upper()
         metadata = dict(metadata or {})
-        issue_type = str(metadata.get("issue_type") or "OTHER").upper()
+        inferred_issue_type = {
+            "REFUND_REQUEST": "CANCELLATION_REFUND", "BOOKING_ISSUE": "BOOKING_ERROR",
+            "CLEANING": "ROOM_CLEANING", "ROOM_SERVICE": "ROOM_AMENITY",
+            "MAINTENANCE": "ROOM_MAINTENANCE", "COMPLAINT": "SERVICE_COMPLAINT",
+        }.get(original_category, "OTHER")
+        issue_type = str(metadata.get("issue_type") or inferred_issue_type).upper()
         if issue_type not in ISSUE_TYPES:
             return {"ok": False, "error": "invalid_issue_type"}
         metadata["issue_type"] = issue_type
