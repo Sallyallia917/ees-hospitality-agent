@@ -342,6 +342,12 @@ class ConversationOrchestrator:
 
     def _service_ticket_confirmation(self, message, principal, context, route, history=None):
         pending = context.get("pending_ticket_request") or {}
+        if route.get("sub_intent") == "supplement_ticket_details":
+            pending["request_text"] = (str(pending.get("request_text") or "") + "；补充：" + str(message)).strip("；")
+            context["pending_ticket_request"] = pending
+            return self._simple(route, "awaiting_ticket_confirmation",
+                f"已补充记录：{pending['request_text']}。请确认是否提交该工单？回复“确认”或“算了”。",
+                "confirm_service_ticket", clarification=True, needs_human=True)
         if route.get("sub_intent") == "reject_ticket":
             context["pending_ticket_request"] = None
             context["pending_ticket_booking_id"] = None
