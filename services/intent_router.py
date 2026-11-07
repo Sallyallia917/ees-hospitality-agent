@@ -45,6 +45,18 @@ def route_question(query, context=None, history=None):
             False, False, "high", "transaction_handoff",
             "需要先确认具体订单和操作意图，确认后转人工；当前版本不执行取消、退款或订单变更。",
             "交易操作必须经过授权和业务系统执行；当前版本仅转人工。", True, sub, method)
+    if intent in {"complaint", "service_request", "invoice_request"}:
+        return _make(intent, "required", status, ["verified_identity", "booking_records", "ticket_details"],
+            False, False, "high" if intent == "complaint" else "medium",
+            "service_ticket_request",
+            "先确认关联订单，再收集必要信息；向住客复述工单内容并确认后，创建对应类别的演示工单。",
+            "投诉、住宿服务和票据申请是需要跟踪的住客事项，使用统一工单入口但按互斥主类别归档。",
+            True, sub, method)
+    if intent == "service_ticket_confirmation":
+        return _make(intent, "required", status, ["verified_identity", "pending_ticket_request"],
+            False, False, "medium", "service_ticket_confirmation",
+            "确认后创建工单；拒绝则清除本次待提交事项。",
+            "工单创建必须绑定明确的住客确认。", True, sub, method)
     if intent == "realtime_availability":
         return _make(intent, "none", status, ["realtime_inventory"], False, True, "medium",
             "human_escalation", "这个问题需要实时房态或现场资源数据。当前版本没有连接相关系统，无法确认当前库存，请联系工作人员核实。",
