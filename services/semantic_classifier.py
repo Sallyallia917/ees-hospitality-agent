@@ -7,7 +7,7 @@ INTENTS = {
     "public_knowledge_inquiry", "booking_related_inquiry", "booking_list_query",
     "booking_selection", "booking_issue", "realtime_availability",
     "transaction_request", "cancellation_policy_inquiry", "service_request",
-    "complaint", "invoice_request", "safety_incident", "ambiguous",
+    "complaint", "invoice_request", "service_ticket_confirmation", "safety_incident", "ambiguous",
 }
 
 def _norm(text):
@@ -181,7 +181,7 @@ def classify_intent(query, history=None, context=None):
     rule = classify_by_rules(query, history, context)
     protected = {"safety_incident", "transaction_request", "realtime_availability",
                  "booking_related_inquiry", "booking_list_query", "booking_selection",
-                 "booking_issue", "cancellation_policy_inquiry", "complaint", "service_request"}
+                 "booking_issue", "cancellation_policy_inquiry", "complaint", "service_request", "invoice_request", "service_ticket_confirmation"}
     if rule["intent"] in protected:
         return rule
     llm = classify_with_llm(query, history, context)
