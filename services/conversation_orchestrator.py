@@ -373,6 +373,9 @@ class ConversationOrchestrator:
             metadata={"source": "ai_conversation", "intent": intent,
                       "issue_type": pending.get("issue_type") or "OTHER",
                       "user_confirmed": True, "requires_human_review": True,
+                      "handling_channel": ("ON_SITE" if category == "STAY_SERVICE" else
+                                           "MULTI_TEAM" if pending.get("issue_type") in {"HYGIENE_COMPLAINT", "NOISE", "FACILITY_COMPLAINT"} else
+                                           "BACK_OFFICE" if category == "BILLING_DOCUMENT" else "MANAGER_REVIEW"),
                       "booking_snapshot": detail.get("booking") or {},
                       "invoice_details": pending.get("details") if intent == "invoice_request" else None,
                       "execution_boundary": "ticket_only_no_service_execution"})
