@@ -27,7 +27,7 @@ class ConversationOrchestrator:
         action, intent = route.get("action"), route.get("intent")
 
         handled_actions = {"booking_lookup", "booking_list", "booking_selection",
-                           "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue", "service_ticket_request", "service_ticket_confirmation"}
+                           "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue", "service_ticket_request", "service_ticket_confirmation", "clarify_facility_context"}
         if action not in handled_actions:
             return {"handled": False, "route": route}
         if not principal_is_valid(principal):
@@ -40,6 +40,9 @@ class ConversationOrchestrator:
             return self._list_bookings(principal, context, route)
         if action == "booking_policy_lookup":
             return self._resolve_booking(message, principal, context, route, "policy")
+        if action == "clarify_facility_context":
+            return self._simple(route, "needs_clarification", route.get("response") or "您是在咨询设施信息，还是希望反馈入住体验问题？",
+                                "clarify_facility_context", clarification=True)
         if action == "service_ticket_request":
             return self._service_ticket_request(message, principal, context, route)
         if action == "service_ticket_confirmation":
@@ -296,7 +299,7 @@ class ConversationOrchestrator:
                 "confirm_service_ticket", clarification=True, needs_human=True)
         intent = route.get("intent")
         if not pending or pending.get("intent") != intent:
-            issue_type = "INVOICE" if intent == "invoice_request" else (
+            issue_type = "BOOKING_ERROR" if intent == "booking_issue" else "INVOICE" if intent == "invoice_request" else (
                 "HYGIENE_COMPLAINT" if any(x in message for x in ("卫生", "脏", "清洁")) and intent == "complaint" else
                 "NOISE" if any(x in message for x in ("吵", "噪音")) and intent == "complaint" else
                 "MERCHANT_COMPLAINT" if intent == "complaint" else
@@ -352,8 +355,8 @@ class ConversationOrchestrator:
             return self._simple(route, "ticket_creation_blocked", "无法重新核验关联订单，没有创建工单。请稍后重试或联系工作人员。",
                                 "ticket_creation_blocked", needs_human=True)
         intent = pending.get("intent")
-        category = {"invoice_request": "BILLING_DOCUMENT", "complaint": "COMPLAINT_EXPERIENCE",
-                    "service_request": "STAY_SERVICE"}.get(intent, "CONSULTATION_OTHER")
+        category = {"booking_issue": "TRANSACTION_ORDER", "invoice_request": "BILLING_DOCUMENT",
+                    "complaint": "COMPLAINT_EXPERIENCE", "service_request": "STAY_SERVICE"}.get(intent, "CONSULTATION_OTHER")
         operation_id = str(uuid.uuid4())
         ticket = self.ticket_service.create_ticket(
             guest_id=principal.customer_id, booking_id=booking_id, category=category,
