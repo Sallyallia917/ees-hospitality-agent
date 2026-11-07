@@ -33,6 +33,11 @@ class ConversationOrchestrator:
                            "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue", "service_ticket_request", "service_ticket_confirmation", "clarify_facility_context"}
         if action not in handled_actions:
             return {"handled": False, "route": route}
+        if action == "clarify_facility_context":
+            context["pending_action"] = "clarify_facility_context"
+            context["pending_facility_issue"] = str(message)
+            return self._simple(route, "needs_clarification", route.get("response") or "您是在咨询设施信息，还是希望反馈入住体验问题？",
+                                "clarify_facility_context", clarification=True)
         if not principal_is_valid(principal):
             return self._simple(route, "unauthenticated",
                 "查询个人订单前，请先在左侧完成演示身份登录。", "login_required")
