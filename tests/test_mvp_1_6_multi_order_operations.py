@@ -53,13 +53,11 @@ def test_cancel_then_report_issue_on_another_order():
                                           history=[{"intent": "booking_list_query"}], context=context)
     second_id = selected["data"]["booking"]["booking_id"]
     assert second_id != first_id
-    assert selected["status"] == "awaiting_issue_details"
-    final = agent.handle_booking_query("房型订错了", principal=principal(),
-                                       history=[{"intent": "booking_issue"}], context=context)
-    assert final["status"] == "human_handoff"
-    assert len(context["booking_operations"]) == 2
-    assert context["booking_operations"][1]["operation_type"] == "booking_issue"
-    assert context["booking_operations"][1]["issue"] == "房型订错了"
+    assert selected["status"] == "awaiting_ticket_confirmation"
+    agent.handle_booking_query("房型订错了", principal=principal(), context=context)
+    final = agent.handle_booking_query("确认", principal=principal(), context=context)
+    assert final["status"] == "ticket_created"
+    assert final["data"]["ticket"]["booking_id"] == second_id
 
 def test_rejecting_current_operation_does_not_erase_completed_operation():
     agent, context = ConversationOrchestrator(), {}
