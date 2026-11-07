@@ -7,7 +7,7 @@ INTENTS = {
     "public_knowledge_inquiry", "booking_related_inquiry", "booking_list_query",
     "booking_selection", "booking_issue", "realtime_availability",
     "transaction_request", "cancellation_policy_inquiry", "service_request",
-    "complaint", "safety_incident", "ambiguous",
+    "complaint", "invoice_request", "safety_incident", "ambiguous",
 }
 
 def _norm(text):
@@ -68,6 +68,11 @@ def classify_by_rules(query, history=None, context=None):
         if len(matches) > 1:
             return _result("booking_selection", "ambiguous_booking_selection", .90)
 
+    if context.get("pending_action") == "confirm_service_ticket":
+        if any(x in text for x in ("确认", "是的", "没错", "对", "确定", "提交")):
+            return _result("service_ticket_confirmation", "confirm_ticket", .99)
+        if any(x in text for x in ("算了", "取消", "不需要", "先不用", "不确认")):
+            return _result("service_ticket_confirmation", "reject_ticket", .99)
     if context.get("pending_action") == "confirm_transaction":
         if any(x in text for x in ("是", "确认", "没错", "对的", "就是这笔", "确定")):
             return _result("transaction_request", "confirm_transaction", .99)
@@ -108,6 +113,10 @@ def classify_by_rules(query, history=None, context=None):
     if any(x in text for x in ("你不记得", "我刚才说过", "我之前说过", "之前不是", "刚才提过")):
         return _result("complaint", "history_reference_complaint", .94, "context_rules")
 
+    if any(x in text for x in ("发票", "开发票", "开票", "票据", "抬头", "税号")):
+        return _result("invoice_request", "invoice", .98)
+    if any(x in text for x in ("投诉", "赔偿", "差评", "卫生太差", "脏乱差", "吵得睡不着", "噪音投诉", "没有电梯还")):
+        return _result("complaint", "experience_complaint", .98)
     if any(x in text for x in ("投诉", "赔偿", "差评", "没人处理", "不回复", "态度差",
                                "要求道歉", "反馈服务问题", "服务不满意", "不满意", "没回应", "未回应")):
         return _result("complaint", "service_complaint", .98)
@@ -136,7 +145,12 @@ def classify_by_rules(query, history=None, context=None):
                                "实时", "剩余房量", "还有空房", "有空位吗", "有位置吗", "现在有车位")):
         return _result("realtime_availability", "inventory", .98)
     if any(x in text for x in ("送", "加被子", "加一床被子", "加一床毯子", "毛巾", "维修",
-                               "不制冷", "打不开门", "打扫", "清洁", "补充用品", "换毛巾")):
+                               "不制冷", "打不开门", "打扫", "清洁", "补充用品", "换毛巾",
+                               "空调", "房间脏", "卫生不好", "房间吵", "噪音", "没有电梯")):
+        if any(x in text for x in ("有电梯吗", "有没有电梯", "酒店电梯", "设施有哪些")):
+            return _result("public_knowledge_inquiry", "facility_question", .96)
+        if any(x in text for x in ("投诉", "太差", "脏乱差", "影响休息", "无法接受", "要求处理", "反馈")):
+            return _result("complaint", "experience_complaint", .96)
         return _result("service_request", "on_site_service", .90)
     return _result("public_knowledge_inquiry", "property_faq", .72)
 
