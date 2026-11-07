@@ -27,7 +27,7 @@ class ConversationOrchestrator:
         action, intent = route.get("action"), route.get("intent")
 
         handled_actions = {"booking_lookup", "booking_list", "booking_selection",
-                           "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue"}
+                           "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue", "service_ticket_request", "service_ticket_confirmation"}
         if action not in handled_actions:
             return {"handled": False, "route": route}
         if not principal_is_valid(principal):
@@ -40,6 +40,10 @@ class ConversationOrchestrator:
             return self._list_bookings(principal, context, route)
         if action == "booking_policy_lookup":
             return self._resolve_booking(message, principal, context, route, "policy")
+        if action == "service_ticket_request":
+            return self._service_ticket_request(message, principal, context, route)
+        if action == "service_ticket_confirmation":
+            return self._service_ticket_confirmation(message, principal, context, route, history)
         if action == "transaction_confirmation":
             return self._transaction(message, principal, context, route, history)
         if action == "transaction_handoff":
@@ -162,6 +166,8 @@ class ConversationOrchestrator:
         if purpose == "select_issue":
             begin_operation(context, booking_id, "booking_issue")
             return self._issue_prompt(result, route)
+        if purpose == "select_service_ticket":
+            return self._prepare_service_ticket(result, context, route)
         return self._simple(route, result["status"], generate_booking_answer(message, result),
             "booking_lookup", data={"booking": result.get("booking"), "cancellation_policy": result.get("cancellation_policy")},
             audit_id=result.get("audit_id"))
@@ -278,6 +284,99 @@ class ConversationOrchestrator:
         context_message = f"请确认这笔订单是否有误：{b.get('room_type')}，入住 {str(b.get('check_in') or '')[:10]}。请描述具体错误内容。"
         return self._simple(route, "awaiting_issue_details", context_message, "describe_booking_issue",
                             clarification=True, data={"booking": b}, audit_id=detail.get("audit_id"))
+
+    def _service_ticket_request(self, message, principal, context, route):
+        pending = context.get("pending_ticket_request") or {}
+        if context.get("pending_action") == "collect_invoice_details":
+            pending["details"] = str(pending.get("details") or "") + "；" + str(message)
+            context["pending_ticket_request"] = pending
+            context["pending_action"] = "confirm_service_ticket"
+            return self._simple(route, "awaiting_ticket_confirmation",
+                f"已记录开票信息：{pending['details']}。请确认是否提交发票申请工单？回复“确认”或“算了”。",
+                "confirm_service_ticket", clarification=True, needs_human=True)
+        intent = route.get("intent")
+        if not pending or pending.get("intent") != intent:
+            issue_type = "INVOICE" if intent == "invoice_request" else (
+                "HYGIENE_COMPLAINT" if any(x in message for x in ("卫生", "脏", "清洁")) and intent == "complaint" else
+                "NOISE" if any(x in message for x in ("吵", "噪音")) and intent == "complaint" else
+                "MERCHANT_COMPLAINT" if intent == "complaint" else
+                "ROOM_CLEANING" if any(x in message for x in ("打扫", "清洁", "卫生")) else
+                "ROOM_MAINTENANCE" if any(x in message for x in ("空调", "维修", "漏水", "坏了")) else
+                "ROOM_AMENITY" if any(x in message for x in ("电梯", "设施")) else "OTHER")
+            context["pending_ticket_request"] = {"intent": intent, "request_text": str(message), "issue_type": issue_type}
+            pending = context["pending_ticket_request"]
+        result = self.booking_service.search_my_bookings(principal, limit=3)
+        if result.get("status") != "ok":
+            return self._failure(result, route)
+        rows = result.get("matched_bookings") or []
+        if not rows:
+            return self._simple(route, "not_found", "没有找到您名下的订单。请先核对订单或联系工作人员；当前不会创建未关联订单的工单。",
+                                "booking_lookup", needs_human=True)
+        if len(rows) > 1 and not context.get("pending_ticket_booking_id"):
+            remember_candidates(context, rows, pending_action="select_service_ticket")
+            return self._candidate_prompt(rows, route, result.get("audit_id"), purpose="select_booking_for_service_ticket")
+        booking_id = context.get("pending_ticket_booking_id") or rows[0]["booking_id"]
+        detail = self.booking_service.get_my_booking(principal, booking_id)
+        if detail.get("status") not in ("ok", "data_incomplete"):
+            return self._failure(detail, route)
+        return self._prepare_service_ticket(detail, context, route)
+
+    def _prepare_service_ticket(self, detail, context, route):
+        booking = detail.get("booking") or {}
+        pending = context.get("pending_ticket_request") or {}
+        booking_id = booking.get("booking_id")
+        context["pending_ticket_booking_id"] = booking_id
+        if pending.get("issue_type") == "INVOICE" and not pending.get("details"):
+            context["pending_action"] = "collect_invoice_details"
+            return self._simple(route, "collecting_invoice_details",
+                f"已关联订单 {booking_id}。请提供发票抬头及开票所需信息（如企业税号、接收邮箱）；个人抬头可说明无需税号。",
+                "collect_invoice_details", clarification=True)
+        context["pending_action"] = "confirm_service_ticket"
+        return self._simple(route, "awaiting_ticket_confirmation",
+            f"已关联订单 {booking_id}。拟提交事项：{pending.get('request_text') or '住客服务请求'}。工单类别：{pending.get('issue_type') or 'OTHER'}。请确认是否提交给工作人员处理？回复“确认”或“算了”。",
+            "confirm_service_ticket", clarification=True, needs_human=True,
+            data={"booking": booking, "issue_type": pending.get("issue_type")})
+
+    def _service_ticket_confirmation(self, message, principal, context, route, history=None):
+        pending = context.get("pending_ticket_request") or {}
+        if route.get("sub_intent") == "reject_ticket":
+            context["pending_ticket_request"] = None
+            context["pending_ticket_booking_id"] = None
+            context["pending_action"] = None
+            return self._simple(route, "ticket_cancelled", "好的，已取消本次工单提交，没有创建工单。", "ticket_aborted")
+        booking_id = context.get("pending_ticket_booking_id")
+        if not pending or not booking_id:
+            return self._simple(route, "needs_clarification", "当前没有待确认的工单事项，请重新描述您的需求。", "service_ticket_context_missing", clarification=True)
+        detail = self.booking_service.get_my_booking(principal, booking_id)
+        if detail.get("status") not in ("ok", "data_incomplete"):
+            return self._simple(route, "ticket_creation_blocked", "无法重新核验关联订单，没有创建工单。请稍后重试或联系工作人员。",
+                                "ticket_creation_blocked", needs_human=True)
+        intent = pending.get("intent")
+        category = {"invoice_request": "BILLING_DOCUMENT", "complaint": "COMPLAINT_EXPERIENCE",
+                    "service_request": "STAY_SERVICE"}.get(intent, "CONSULTATION_OTHER")
+        operation_id = str(uuid.uuid4())
+        ticket = self.ticket_service.create_ticket(
+            guest_id=principal.customer_id, booking_id=booking_id, category=category,
+            priority="HIGH" if intent == "complaint" else "NORMAL",
+            description=(pending.get("request_text") or "") + (("；补充信息：" + pending["details"]) if pending.get("details") else ""),
+            idempotency_key=f"{principal.customer_id}:{operation_id}:service",
+            operation_id=operation_id,
+            metadata={"source": "ai_conversation", "intent": intent,
+                      "issue_type": pending.get("issue_type") or "OTHER",
+                      "user_confirmed": True, "requires_human_review": True,
+                      "booking_snapshot": detail.get("booking") or {},
+                      "invoice_details": pending.get("details") if intent == "invoice_request" else None,
+                      "execution_boundary": "ticket_only_no_service_execution"})
+        context["pending_ticket_request"] = None
+        context["pending_ticket_booking_id"] = None
+        context["pending_action"] = None
+        if not ticket.get("ok"):
+            return self._simple(route, "ticket_creation_failed", "工单创建失败，未执行任何现场服务或票据操作，请联系工作人员。",
+                                "ticket_creation_failed", needs_human=True)
+        item = ticket["ticket"]
+        return self._simple(route, "ticket_created",
+            f"已创建工单 {item['ticket_id']}，类别：{item['category']}。该工单已提交给人工处理；系统尚未实际安排服务或开具发票。",
+            "automatic_ticket_created", needs_human=True, data={"ticket": item, "booking_id": booking_id})
 
     def _failure(self, result, route):
         status = result.get("status", "tool_error")
