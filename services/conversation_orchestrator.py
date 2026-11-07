@@ -48,11 +48,6 @@ class ConversationOrchestrator:
             return self._list_bookings(principal, context, route)
         if action == "booking_policy_lookup":
             return self._resolve_booking(message, principal, context, route, "policy")
-        if action == "clarify_facility_context":
-            context["pending_action"] = "clarify_facility_context"
-            context["pending_facility_issue"] = str(message)
-            return self._simple(route, "needs_clarification", route.get("response") or "您是在咨询设施信息，还是希望反馈入住体验问题？",
-                                "clarify_facility_context", clarification=True)
         if action == "service_ticket_request":
             return self._service_ticket_request(message, principal, context, route)
         if action == "service_ticket_confirmation":
