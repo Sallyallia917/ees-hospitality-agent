@@ -75,6 +75,7 @@ def classify_by_rules(query, history=None, context=None):
             return _result("service_ticket_confirmation", "confirm_ticket", .99)
         if any(x in text for x in ("算了", "取消", "不需要", "先不用", "不确认")):
             return _result("service_ticket_confirmation", "reject_ticket", .99)
+        return _result("service_ticket_confirmation", "supplement_ticket_details", .90)
     if context.get("pending_action") == "confirm_transaction":
         if any(x in text for x in ("是", "确认", "没错", "对的", "就是这笔", "确定")):
             return _result("transaction_request", "confirm_transaction", .99)
