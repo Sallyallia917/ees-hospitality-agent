@@ -8,7 +8,7 @@ def default_context():
         "active_booking_id": None, "candidate_booking_ids": [],
         "candidate_booking_summaries": [], "last_intent": None,
         "last_sub_intent": None, "pending_action": None, "dialogue_stage": "idle",
-        "pending_transaction_type": None, "pending_issue_text": None, "pending_transaction_request": None, "pending_ticket_request": None, "pending_ticket_booking_id": None,
+        "pending_transaction_type": None, "pending_issue_text": None, "pending_transaction_request": None, "pending_ticket_request": None, "pending_ticket_booking_id": None, "pending_facility_issue": None,
         "current_operation": None, "booking_operations": [], "operation_sequence": 0,
     }
 
