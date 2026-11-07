@@ -23,6 +23,8 @@ class ConversationOrchestrator:
         history = history or []
         context = context if isinstance(context, dict) else {}
         route = route_question(message, context, history)
+        if context.get("pending_action") == "clarify_facility_context" and route.get("intent") == "public_knowledge_inquiry":
+            context["pending_action"] = None
         remember_intent(context, route.get("intent"), route.get("sub_intent"))
         action, intent = route.get("action"), route.get("intent")
 
@@ -41,6 +43,7 @@ class ConversationOrchestrator:
         if action == "booking_policy_lookup":
             return self._resolve_booking(message, principal, context, route, "policy")
         if action == "clarify_facility_context":
+            context["pending_action"] = "clarify_facility_context"
             return self._simple(route, "needs_clarification", route.get("response") or "您是在咨询设施信息，还是希望反馈入住体验问题？",
                                 "clarify_facility_context", clarification=True)
         if action == "service_ticket_request":
