@@ -143,36 +143,36 @@
     "case_id": "I21",
     "input": "送两条毛巾",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "I22",
     "input": "空调坏了不制冷",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "I23",
     "input": "帮我加一床被子",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "I24",
     "input": "我要投诉，客服一直不回复",
     "expected_intent": "complaint",
-    "expected_action": "human_escalation",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "I25",
     "input": "我要求赔偿",
     "expected_intent": "complaint",
-    "expected_action": "human_escalation",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "I26",
@@ -206,7 +206,7 @@
     "case_id": "I30",
     "input": "房卡打不开门",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   }
 ]
