@@ -68,6 +68,8 @@ def classify_by_rules(query, history=None, context=None):
         if len(matches) > 1:
             return _result("booking_selection", "ambiguous_booking_selection", .90)
 
+    if context.get("pending_action") == "collect_invoice_details":
+        return _result("invoice_request", "invoice_details", .99)
     if context.get("pending_action") == "confirm_service_ticket":
         if any(x in text for x in ("确认", "是的", "没错", "对", "确定", "提交")):
             return _result("service_ticket_confirmation", "confirm_ticket", .99)
@@ -115,7 +117,7 @@ def classify_by_rules(query, history=None, context=None):
 
     if any(x in text for x in ("发票", "开发票", "开票", "票据", "抬头", "税号")):
         return _result("invoice_request", "invoice", .98)
-    if any(x in text for x in ("投诉", "赔偿", "差评", "卫生太差", "脏乱差", "吵得睡不着", "噪音投诉", "没有电梯还")):
+    if any(x in text for x in ("投诉", "赔偿", "差评", "卫生太差", "脏乱差", "很脏", "吵得睡不着", "房间吵", "噪音", "没有电梯还")):
         return _result("complaint", "experience_complaint", .98)
     if any(x in text for x in ("投诉", "赔偿", "差评", "没人处理", "不回复", "态度差",
                                "要求道歉", "反馈服务问题", "服务不满意", "不满意", "没回应", "未回应")):
