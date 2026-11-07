@@ -149,8 +149,10 @@ def classify_by_rules(query, history=None, context=None):
     if any(x in text for x in ("送", "加被子", "加一床被子", "加一床毯子", "毛巾", "维修",
                                "不制冷", "打不开门", "打扫", "清洁", "补充用品", "换毛巾",
                                "空调", "房间脏", "卫生不好", "房间吵", "噪音", "没有电梯")):
-        if any(x in text for x in ("有电梯吗", "有没有电梯", "酒店电梯", "设施有哪些")):
+        if any(x in text for x in ("有电梯吗", "有没有电梯", "没有电梯吗", "酒店电梯", "设施有哪些")):
             return _result("public_knowledge_inquiry", "facility_question", .96)
+        if text in ("没有电梯", "酒店没电梯", "房源没电梯"):
+            return _result("service_request", "facility_or_complaint_clarification", .70)
         if any(x in text for x in ("投诉", "太差", "脏乱差", "影响休息", "无法接受", "要求处理", "反馈")):
             return _result("complaint", "experience_complaint", .96)
         return _result("service_request", "on_site_service", .90)
