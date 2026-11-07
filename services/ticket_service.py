@@ -19,7 +19,21 @@ TRANSITIONS = {
     "CLOSED": {"PROCESSING"},
     "ESCALATED": {"ASSIGNED", "PROCESSING", "RESOLVED"},
 }
-CATEGORIES = {"CLEANING", "ROOM_SERVICE", "MAINTENANCE", "COMPLAINT", "BOOKING_ISSUE", "REFUND_REQUEST", "OTHER"}
+# MECE primary categories. Legacy issue labels are normalized for backward compatibility.
+CATEGORIES = {"TRANSACTION_ORDER", "STAY_SERVICE", "COMPLAINT_EXPERIENCE", "BILLING_DOCUMENT", "CONSULTATION_OTHER"}
+LEGACY_CATEGORY_MAP = {
+    "REFUND_REQUEST": "TRANSACTION_ORDER", "BOOKING_ISSUE": "TRANSACTION_ORDER",
+    "CLEANING": "STAY_SERVICE", "ROOM_SERVICE": "STAY_SERVICE", "MAINTENANCE": "STAY_SERVICE",
+    "COMPLAINT": "COMPLAINT_EXPERIENCE", "OTHER": "CONSULTATION_OTHER",
+}
+ISSUE_TYPES = {
+    "BOOKING_ERROR", "CANCELLATION_REFUND", "ROOM_CLEANING", "ROOM_MAINTENANCE",
+    "ROOM_AMENITY", "NOISE", "MERCHANT_COMPLAINT", "SERVICE_COMPLAINT",
+    "HYGIENE_COMPLAINT", "FACILITY_COMPLAINT", "INVOICE", "OTHER",
+}
+def normalize_category(category):
+    value = str(category or "CONSULTATION_OTHER").upper()
+    return LEGACY_CATEGORY_MAP.get(value, value)
 PRIORITIES = {"LOW", "NORMAL", "HIGH", "URGENT"}
 
 class TicketService:
@@ -77,8 +91,13 @@ class TicketService:
         description = str(description or "").strip()
         if not description:
             return {"ok": False, "error": "description_required"}
-        category = str(category).upper()
+        category = normalize_category(category)
         priority = str(priority).upper()
+        metadata = dict(metadata or {})
+        issue_type = str(metadata.get("issue_type") or "OTHER").upper()
+        if issue_type not in ISSUE_TYPES:
+            return {"ok": False, "error": "invalid_issue_type"}
+        metadata["issue_type"] = issue_type
         if category not in CATEGORIES or priority not in PRIORITIES:
             return {"ok": False, "error": "invalid_category_or_priority"}
         key = str(idempotency_key or uuid.uuid4())
@@ -96,7 +115,7 @@ class TicketService:
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (ticket_id, str(guest_id), booking_id, category, description, priority,
                  "SUBMITTED", None, key, now, now, json.dumps(history, ensure_ascii=False),
-                 json.dumps(metadata or {}, ensure_ascii=False), operation_id))
+                 json.dumps(metadata, ensure_ascii=False), operation_id))
             row = conn.execute("SELECT * FROM tickets WHERE ticket_id=?", (ticket_id,)).fetchone()
             return {"ok": True, "created": True, "ticket": self._row(row)}
 
