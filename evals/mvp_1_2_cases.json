@@ -501,5 +501,54 @@
     "expected_intent": "transaction_request",
     "expected_action": "transaction_handoff",
     "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E072",
+    "input": "环境脏乱差",
+    "expected_intent": "complaint",
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E073",
+    "input": "房间吵",
+    "expected_intent": "complaint",
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E074",
+    "input": "没有电梯",
+    "expected_intent": "service_request",
+    "expected_action": "clarify_facility_context",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "E075",
+    "input": "有没有电梯？",
+    "expected_intent": "public_knowledge_inquiry",
+    "expected_action": "rag_answer",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "E076",
+    "input": "开发票",
+    "expected_intent": "invoice_request",
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E077",
+    "input": "空调不制冷",
+    "expected_intent": "service_request",
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E078",
+    "input": "卫生问题反馈",
+    "expected_intent": "complaint",
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   }
 ]
