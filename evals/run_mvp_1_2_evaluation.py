@@ -17,13 +17,13 @@ def run():
           "actual_action":r["action"],"expected_order_dependency":c["expected_order_dependency"],
           "actual_order_dependency":r["order_dependency"]})
     passed=sum(x["pass"] for x in rows)
-    report={"version":"1.2","dataset":"synthetic","total":len(rows),"passed":passed,"failed":len(rows)-passed,
+    report={"version":"1.9","dataset":"synthetic","total":len(rows),"passed":passed,"failed":len(rows)-passed,
       "intent_accuracy":sum(x["checks"]["intent"] for x in rows)/len(rows),
       "action_accuracy":sum(x["checks"]["action"] for x in rows)/len(rows),
       "order_dependency_accuracy":sum(x["checks"]["order_dependency"] for x in rows)/len(rows),"cases":rows}
     (ROOT/"reports").mkdir(exist_ok=True)
     (ROOT/"reports/mvp_1_2_evaluation.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
-    (ROOT/"reports/mvp_1_2_evaluation.md").write_text("# EES MVP 1.2 路由评测\n\n"+
+    (ROOT/"reports/mvp_1_2_evaluation.md").write_text("# EES MVP 1.9 路由回归评测（沿用 MVP 1.2 合成语料）\n\n"+
       f"- 模拟案例：{report['total']}\n- 全项通过：{passed}\n- 存在失败：{report['failed']}\n"+
       f"- 意图分类匹配率：{report['intent_accuracy']:.1%}\n- 路由动作匹配率：{report['action_accuracy']:.1%}\n"+
       f"- 订单依赖判断匹配率：{report['order_dependency_accuracy']:.1%}\n\n"+

@@ -171,36 +171,36 @@
     "case_id": "E025",
     "input": "送两条毛巾",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E026",
     "input": "空调坏了不制冷",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E027",
     "input": "帮我加一床被子",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E028",
     "input": "我要投诉，客服一直不回复",
     "expected_intent": "complaint",
-    "expected_action": "human_escalation",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E029",
     "input": "我要求赔偿",
     "expected_intent": "complaint",
-    "expected_action": "human_escalation",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E030",
@@ -234,8 +234,8 @@
     "case_id": "E034",
     "input": "房卡打不开门",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E035",
@@ -367,50 +367,50 @@
     "case_id": "E053",
     "input": "房间需要维修空调",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E054",
     "input": "麻烦送一瓶水",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E055",
     "input": "请安排打扫房间",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E056",
     "input": "能再给我一条毛巾吗",
     "expected_intent": "service_request",
-    "expected_action": "service_handoff",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E057",
     "input": "我要反馈服务问题",
     "expected_intent": "complaint",
-    "expected_action": "human_escalation",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E058",
     "input": "工作人员一直没回应我",
     "expected_intent": "complaint",
-    "expected_action": "human_escalation",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E059",
     "input": "我对这次服务不满意",
     "expected_intent": "complaint",
-    "expected_action": "human_escalation",
-    "expected_order_dependency": "optional"
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
   },
   {
     "case_id": "E060",
@@ -500,6 +500,55 @@
     "input": "帮我把大床房换为双床房",
     "expected_intent": "transaction_request",
     "expected_action": "transaction_handoff",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E072",
+    "input": "环境脏乱差",
+    "expected_intent": "complaint",
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E073",
+    "input": "房间吵",
+    "expected_intent": "complaint",
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E074",
+    "input": "没有电梯",
+    "expected_intent": "service_request",
+    "expected_action": "clarify_facility_context",
+    "expected_order_dependency": "optional"
+  },
+  {
+    "case_id": "E075",
+    "input": "有没有电梯？",
+    "expected_intent": "public_knowledge_inquiry",
+    "expected_action": "rag_answer",
+    "expected_order_dependency": "none"
+  },
+  {
+    "case_id": "E076",
+    "input": "开发票",
+    "expected_intent": "invoice_request",
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E077",
+    "input": "空调不制冷",
+    "expected_intent": "service_request",
+    "expected_action": "service_ticket_request",
+    "expected_order_dependency": "required"
+  },
+  {
+    "case_id": "E078",
+    "input": "卫生问题反馈",
+    "expected_intent": "complaint",
+    "expected_action": "service_ticket_request",
     "expected_order_dependency": "required"
   }
 ]

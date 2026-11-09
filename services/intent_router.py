@@ -27,9 +27,9 @@ def route_question(query, context=None, history=None):
             "medium", "booking_selection", "根据当前会话候选订单解析用户选择，再由订单服务复核归属。",
             "仅允许从已认证订单列表中选择。", False, sub, method)
     if intent == "booking_issue":
-        return _make(intent, "required", status, ["verified_identity", "booking_records"], False, False,
-            "high", "transaction_handoff", "需要先确认具体订单，再了解错误内容并转人工核实。",
-            "订单信息更正涉及交易数据，必须人工核验。", True, sub, method)
+        return _make(intent, "required", status, ["verified_identity", "booking_records", "ticket_details"], False, False,
+            "high", "service_ticket_request", "需要先确认具体订单，再复述订单问题并经住客确认后创建订单问题工单。",
+            "订单问题需要人工核验和跟踪；AI 不直接修改订单。", True, sub, method)
     if intent == "cancellation_policy_inquiry":
         return _make(intent, "required", status, ["verified_identity", "booking_details", "cancellation_policy"],
             False, False, "medium", "booking_policy_lookup",
@@ -45,6 +45,22 @@ def route_question(query, context=None, history=None):
             False, False, "high", "transaction_handoff",
             "需要先确认具体订单和操作意图，确认后转人工；当前版本不执行取消、退款或订单变更。",
             "交易操作必须经过授权和业务系统执行；当前版本仅转人工。", True, sub, method)
+    if intent in {"complaint", "service_request", "invoice_request"}:
+        if intent == "service_request" and sub == "facility_or_complaint_clarification":
+            return _make(intent, "optional", status, ["property_facilities", "guest_context"], False, False,
+                "low", "clarify_facility_context", "您是在咨询房源是否有电梯，还是已经入住并希望反馈无电梯带来的不便？",
+                "单独的设施陈述无法确定是信息咨询还是体验投诉，先澄清再路由。", False, sub, method)
+        return _make(intent, "required", status, ["verified_identity", "booking_records", "ticket_details"],
+            False, False, "high" if intent == "complaint" else "medium",
+            "service_ticket_request",
+            "先确认关联订单，再收集必要信息；向住客复述工单内容并确认后，创建对应类别的演示工单。",
+            "投诉、住宿服务和票据申请是需要跟踪的住客事项，使用统一工单入口但按互斥主类别归档。",
+            True, sub, method)
+    if intent == "service_ticket_confirmation":
+        return _make(intent, "required", status, ["verified_identity", "pending_ticket_request"],
+            False, False, "medium", "service_ticket_confirmation",
+            "确认后创建工单；拒绝则清除本次待提交事项。",
+            "工单创建必须绑定明确的住客确认。", True, sub, method)
     if intent == "realtime_availability":
         return _make(intent, "none", status, ["realtime_inventory"], False, True, "medium",
             "human_escalation", "这个问题需要实时房态或现场资源数据。当前版本没有连接相关系统，无法确认当前库存，请联系工作人员核实。",
