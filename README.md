@@ -32,7 +32,7 @@ streamlit run app.py
 - **身份切换清理**：退出或认证过期时清除订单上下文、候选订单、操作记录和对话历史，避免跨身份复用会话数据。
 - **多订单、多操作状态**：区分当前操作与会话内历史操作；每笔取消/退款或订单问题独立关联订单、确认状态和处理结果。
 - **连续订单处理**：一笔操作确认/结束后，用户可以在同一会话重新选择另一笔订单，不再沿用上一笔活动订单。
-- **状态边界**：用户确认后自动创建本地演示退款工单；这只代表申请已登记，不代表真实客服已接单，也不代表订单已取消或退款成功。
+- **状态边界**：MVP 1.6 仅管理多订单与多操作的会话状态，不创建持久化工单；退款申请工单的 SQLite 持久化与生命周期在 MVP 1.8 引入，通用服务工单流程在 MVP 1.9 扩展。
 
 ## MVP 1.8 ticket lifecycle
 `SUBMITTED -> ASSIGNED -> PROCESSING -> PENDING_USER -> RESOLVED -> CLOSED`；支持从处理阶段升级 `ESCALATED`，以及住客反馈未解决后从 `RESOLVED/CLOSED` 重新进入 `PROCESSING`。
@@ -61,7 +61,7 @@ ConversationOrchestrator
         |
         +--> RAG retrieval --> optional LLM answer verbalization
         |
-        +--> TicketService (confirmed refund request -> SQLite ticket)
+        +--> TicketService (explicitly confirmed service request -> SQLite demo ticket)
         |
         +--> Human handoff / safety guidance
 \`\`\`
