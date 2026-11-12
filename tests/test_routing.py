@@ -38,3 +38,17 @@ def test_invalid_context_status_rejected():
         assert False
     except ValueError:
         assert True
+
+
+def test_unauthorized_room_entry_is_classified_as_critical_safety_incident():
+    r = route_question("保洁员直接刷卡进来了，我没有允许")
+    assert r["intent"] == "safety_incident"
+    assert r["sub_intent"] == "unauthorized_entry"
+    assert r["risk_level"] == "critical"
+    assert r["action"] == "safety_guidance"
+
+
+def test_unexpected_staff_entry_does_not_route_to_service_faq():
+    r = route_question("工作人员未经允许进入客房")
+    assert r["intent"] == "safety_incident"
+    assert r["action"] == "safety_guidance"
