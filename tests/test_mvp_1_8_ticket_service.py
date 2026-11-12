@@ -44,13 +44,24 @@ def test_illegal_transition_is_rejected(tickets):
     result = tickets.update_ticket(created["ticket"]["ticket_id"], "CLOSED", "staff-1")
     assert result["error"] == "invalid_transition"
 
-def test_resolved_ticket_can_reopen_for_followup(tickets):
-    created = tickets.create_ticket("guest-a", "空调维修", "MAINTENANCE")
+def test_resolved_ticket_is_terminal_and_new_request_can_be_created(tickets):
+    created = tickets.create_ticket(
+        "guest-a", "空调维修", "MAINTENANCE", booking_id="BOOKING-1"
+    )
     ticket_id = created["ticket"]["ticket_id"]
     tickets.update_ticket(ticket_id, "PROCESSING", "staff")
     tickets.update_ticket(ticket_id, "RESOLVED", "staff")
-    reopened = tickets.update_ticket(ticket_id, "PROCESSING", "staff", note="住客反馈仍未解决")
-    assert reopened["ok"] and reopened["ticket"]["status"] == "PROCESSING"
+    reopened = tickets.update_ticket(ticket_id, "PROCESSING", "staff",
+                                     note="住客反馈仍未解决")
+    assert reopened["ok"] is False
+    assert reopened["error"] == "invalid_transition"
+
+    followup = tickets.create_ticket(
+        "guest-a", "再次申请空调维修", "MAINTENANCE",
+        booking_id="BOOKING-1", idempotency_key="follow-up-request",
+    )
+    assert followup["ok"] and followup["created"]
+    assert followup["ticket"]["ticket_id"] != ticket_id
 
 def test_dialogue_act_history_correction_supplement_and_status():
     assert classify_dialogue_act("你不记得我取消过一次了吗")["act"] == "history_reference"
