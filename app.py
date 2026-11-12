@@ -273,6 +273,7 @@ with tab_tickets:
                 "RESOLVED": "已解决",
                 "CLOSED": "已关闭",
                 "ESCALATED": "已升级人工处理",
+                "CANCELLED": "已取消申请",
             }
             category_labels = {
                 "TRANSACTION_ORDER": "交易与订单",
