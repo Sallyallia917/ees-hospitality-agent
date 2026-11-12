@@ -271,6 +271,28 @@ class TicketService:
             ).fetchone()
             return {"ok": True, "created": True, "ticket": self._row(row)}
 
+    def get_active_ticket(self, booking_id, issue_type, guest_id=None):
+        """Return the active ticket for a booking/issue pair, optionally owner-scoped."""
+        normalized_issue_type = normalize_issue_type(issue_type)
+        with self._connection() as conn:
+            if guest_id is None:
+                row = conn.execute("""
+                    SELECT * FROM tickets
+                    WHERE booking_id=? AND issue_type=?
+                      AND status IN ('SUBMITTED', 'ASSIGNED', 'PROCESSING',
+                                     'PENDING_USER', 'ESCALATED')
+                    ORDER BY created_at DESC LIMIT 1
+                """, (str(booking_id), normalized_issue_type)).fetchone()
+            else:
+                row = conn.execute("""
+                    SELECT * FROM tickets
+                    WHERE booking_id=? AND issue_type=? AND guest_id=?
+                      AND status IN ('SUBMITTED', 'ASSIGNED', 'PROCESSING',
+                                     'PENDING_USER', 'ESCALATED')
+                    ORDER BY created_at DESC LIMIT 1
+                """, (str(booking_id), normalized_issue_type, str(guest_id))).fetchone()
+        return self._row(row) if row else None
+
     def get_ticket(self, ticket_id, guest_id=None, staff=False):
         with self._connection() as conn:
             row = conn.execute(
