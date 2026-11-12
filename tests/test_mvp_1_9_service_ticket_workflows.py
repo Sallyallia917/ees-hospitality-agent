@@ -339,3 +339,28 @@ def test_repeated_identical_safety_message_is_idempotent_but_new_incident_is_not
     )
     assert second_incident["status"] == "safety_ticket_created"
     assert len(tickets.list_tickets(guest_id="CUST-001")) == 2
+
+
+def test_guest_can_cancel_invoice_request_while_collecting_details(tmp_path):
+    tickets = TicketService(tmp_path / "invoice-cancel.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+    first = agent.handle_booking_query("开发票", principal=principal(), context=context)
+    if first["action"] == "select_booking_for_service_ticket":
+        agent.handle_booking_query("第一笔", principal=principal(), context=context)
+    assert context["pending_action"] == "collect_invoice_details"
+
+    cancelled = agent.handle_booking_query(
+        "算了，不开发票了", principal=principal(), context=context
+    )
+    assert cancelled["status"] == "ticket_cancelled"
+    assert context.get("pending_ticket_request") is None
+    assert context.get("pending_action") is None
+    assert tickets.list_tickets(guest_id="CUST-001") == []
+
+
+def test_natural_ticket_progress_phrases_route_to_status_lookup():
+    for phrase in ("我的工单进展如何", "工单怎么还没处理", "有人接单了吗"):
+        result = classify_by_rules(phrase)
+        assert result["intent"] == "ticket_status_inquiry"
+        assert result["sub_intent"] == "active_ticket_status"
