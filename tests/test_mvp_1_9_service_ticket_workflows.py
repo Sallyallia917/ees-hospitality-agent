@@ -170,3 +170,32 @@ def test_service_ticket_operation_id_is_stable_during_confirmation_dialogue(tmp_
     )
     assert supplemented["status"] == "awaiting_ticket_confirmation"
     assert context["pending_ticket_request"]["operation_id"] == operation_id
+
+
+def test_guest_can_query_own_active_ticket_status_only(tmp_path):
+    tickets = TicketService(tmp_path / "tickets.sqlite3")
+    own = tickets.create_ticket(
+        "CUST-001", "空调维修", "MAINTENANCE", booking_id="DEMO-BOOKING-2001"
+    )
+    tickets.create_ticket(
+        "CUST-002", "房间清洁", "CLEANING", booking_id="DEMO-BOOKING-2002"
+    )
+    agent = ConversationOrchestrator(BookingService(), tickets)
+
+    result = agent.handle_booking_query(
+        "我的工单状态", principal=principal(), context={}
+    )
+    assert result["status"] == "active_tickets_found"
+    assert len(result["data"]["tickets"]) == 1
+    assert result["data"]["tickets"][0]["ticket_id"] == own["ticket"]["ticket_id"]
+    assert own["ticket"]["ticket_id"] in result["answer"]
+
+
+def test_guest_ticket_status_query_with_no_active_tickets_is_explicit(tmp_path):
+    tickets = TicketService(tmp_path / "tickets.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    result = agent.handle_booking_query(
+        "查一下我的工单进度", principal=principal(), context={}
+    )
+    assert result["status"] == "no_active_tickets"
+    assert result["data"]["tickets"] == []
