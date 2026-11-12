@@ -30,7 +30,7 @@ class ConversationOrchestrator:
         action, intent = route.get("action"), route.get("intent")
 
         handled_actions = {"booking_lookup", "booking_list", "booking_selection",
-                           "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue", "service_ticket_request", "service_ticket_confirmation", "clarify_facility_context"}
+                           "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue", "service_ticket_request", "service_ticket_confirmation", "ticket_status_lookup", "clarify_facility_context"}
         if action not in handled_actions:
             return {"handled": False, "route": route}
         if action == "clarify_facility_context":
@@ -42,6 +42,8 @@ class ConversationOrchestrator:
             return self._simple(route, "unauthenticated",
                 "查询个人订单前，请先在左侧完成演示身份登录。", "login_required")
 
+        if action == "ticket_status_lookup":
+            return self._ticket_status_lookup(principal, route)
         if action == "booking_selection":
             return self._select_candidate(message, principal, context, route)
         if action == "booking_list":
@@ -292,6 +294,36 @@ class ConversationOrchestrator:
         context_message = f"请确认这笔订单是否有误：{b.get('room_type')}，入住 {str(b.get('check_in') or '')[:10]}。请描述具体错误内容。"
         return self._simple(route, "awaiting_issue_details", context_message, "describe_booking_issue",
                             clarification=True, data={"booking": b}, audit_id=detail.get("audit_id"))
+
+    def _ticket_status_lookup(self, principal, route):
+        rows = self.ticket_service.list_active_tickets(
+            guest_id=principal.customer_id, limit=10
+        )
+        if not rows:
+            return self._simple(
+                route, "no_active_tickets",
+                "目前没有查询到您名下仍在处理中的服务工单。如果您刚提交过申请，可以稍后再查；如需反馈新问题，可以直接告诉我。",
+                "ticket_status_lookup", data={"tickets": []},
+            )
+        labels = {
+            "SUBMITTED": "已提交，等待受理",
+            "ASSIGNED": "已分配处理人员",
+            "PROCESSING": "处理中",
+            "PENDING_USER": "等待您补充信息",
+            "ESCALATED": "已升级人工处理",
+        }
+        lines = ["查询到您名下以下处理中工单："]
+        for item in rows:
+            status = labels.get(item.get("status"), item.get("status") or "状态未知")
+            lines.append(
+                f"{item['ticket_id']}｜订单 {item.get('booking_id') or '未关联订单'}｜"
+                f"{item.get('issue_type') or item.get('category')}｜{status}"
+            )
+        lines.append("以上为当前演示工单记录；系统不会据此推断现场人员已完成服务。")
+        return self._simple(
+            route, "active_tickets_found", "\\n".join(lines),
+            "ticket_status_lookup", needs_human=True, data={"tickets": rows},
+        )
 
     def _service_ticket_request(self, message, principal, context, route):
         pending = context.get("pending_ticket_request") or {}
