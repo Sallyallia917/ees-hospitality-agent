@@ -428,7 +428,8 @@ class ConversationOrchestrator:
             fields["invoice_type"] = "COMPANY"
         elif any(token in text for token in ("个人", "个人抬头")):
             fields["invoice_type"] = "PERSONAL"
-            fields.setdefault("title", "个人")
+            fields.pop("tax_id", None)
+            fields.pop("tax_id_invalid", None)
         elif fields.get("invoice_type") == "PERSONAL" and any(
             token in text for token in ("姓名", "抬头")
         ):
