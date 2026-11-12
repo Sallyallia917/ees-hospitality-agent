@@ -272,3 +272,70 @@ def test_safety_incident_gives_immediate_guidance_without_authentication(tmp_pat
     assert result["status"] == "safety_handoff_required"
     assert "立即远离危险区域" in result["answer"]
     assert tickets.list_tickets(staff=True) == []
+
+
+def test_personal_invoice_requires_an_actual_title(tmp_path):
+    tickets = TicketService(tmp_path / "personal-title.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+    first = agent.handle_booking_query("开发票", principal=principal(), context=context)
+    if first["action"] == "select_booking_for_service_ticket":
+        agent.handle_booking_query("第一笔", principal=principal(), context=context)
+
+    incomplete = agent.handle_booking_query(
+        "个人发票", principal=principal(), context=context
+    )
+    assert incomplete["status"] == "collecting_invoice_details"
+    assert "发票抬头" in incomplete["answer"]
+    assert tickets.list_tickets(guest_id="CUST-001") == []
+
+    completed = agent.handle_booking_query(
+        "抬头：张三", principal=principal(), context=context
+    )
+    assert completed["status"] == "awaiting_ticket_confirmation"
+    assert completed["data"]["invoice_details"]["title"] == "张三"
+
+
+def test_invoice_can_switch_from_invalid_company_tax_id_to_personal_invoice(tmp_path):
+    tickets = TicketService(tmp_path / "invoice-switch.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+    first = agent.handle_booking_query("开发票", principal=principal(), context=context)
+    if first["action"] == "select_booking_for_service_ticket":
+        agent.handle_booking_query("第一笔", principal=principal(), context=context)
+
+    invalid = agent.handle_booking_query(
+        "企业发票，抬头：某某科技有限公司，税号：123456",
+        principal=principal(), context=context,
+    )
+    assert invalid["status"] == "collecting_invoice_details"
+
+    switched = agent.handle_booking_query(
+        "改开个人发票，抬头：张三", principal=principal(), context=context
+    )
+    assert switched["status"] == "awaiting_ticket_confirmation"
+    details = switched["data"]["invoice_details"]
+    assert details["invoice_type"] == "PERSONAL"
+    assert details["title"] == "张三"
+    assert "tax_id" not in details
+    assert "tax_id_invalid" not in details
+
+
+def test_repeated_identical_safety_message_is_idempotent_but_new_incident_is_not_suppressed(tmp_path):
+    tickets = TicketService(tmp_path / "safety-retry.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+    first = agent.handle_booking_query(
+        "保洁员未经允许刷卡进入客房", principal=principal(), context=context
+    )
+    retry = agent.handle_booking_query(
+        "保洁员未经允许刷卡进入客房", principal=principal(), context=context
+    )
+    assert first["data"]["ticket"]["ticket_id"] == retry["data"]["ticket"]["ticket_id"]
+    assert len(tickets.list_tickets(guest_id="CUST-001")) == 1
+
+    second_incident = agent.handle_booking_query(
+        "今天又有工作人员未经允许进入客房", principal=principal(), context=context
+    )
+    assert second_incident["status"] == "safety_ticket_created"
+    assert len(tickets.list_tickets(guest_id="CUST-001")) == 2
