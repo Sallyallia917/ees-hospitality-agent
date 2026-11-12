@@ -95,3 +95,78 @@ def test_facility_statement_is_clarified_then_routed_as_experience_complaint():
     second = agent.handle_booking_query("已经入住，很不方便，希望反馈", principal=principal(), context=context)
     assert second["status"] == "needs_clarification"
     assert context["pending_ticket_request"]["issue_type"] == "FACILITY_COMPLAINT"
+
+
+def test_repeated_service_request_reuses_existing_active_ticket(tmp_path):
+    tickets = TicketService(tmp_path / "tickets.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+
+    first_context = {}
+    agent.handle_booking_query("空调不制冷", principal=principal(), context=first_context)
+    first_prompt = agent.handle_booking_query(
+        "第一笔", principal=principal(), context=first_context
+    )
+    assert first_prompt["status"] == "awaiting_ticket_confirmation"
+    created = agent.handle_booking_query(
+        "确认", principal=principal(), context=first_context
+    )
+    assert created["status"] == "ticket_created"
+    original_id = created["data"]["ticket"]["ticket_id"]
+
+    repeated_context = {}
+    agent.handle_booking_query("空调不制冷", principal=principal(), context=repeated_context)
+    repeated = agent.handle_booking_query(
+        "第一笔", principal=principal(), context=repeated_context
+    )
+    assert repeated["status"] == "existing_ticket"
+    assert repeated["data"]["reused"] is True
+    assert repeated["data"]["ticket"]["ticket_id"] == original_id
+    assert len(tickets.list_tickets(guest_id="CUST-001")) == 1
+
+
+def test_different_issue_types_for_same_booking_can_create_parallel_tickets(tmp_path):
+    tickets = TicketService(tmp_path / "tickets.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+
+    maintenance_context = {}
+    agent.handle_booking_query("空调不制冷", principal=principal(), context=maintenance_context)
+    agent.handle_booking_query("第一笔", principal=principal(), context=maintenance_context)
+    maintenance = agent.handle_booking_query(
+        "确认", principal=principal(), context=maintenance_context
+    )
+    booking_id = maintenance["data"]["booking_id"]
+
+    complaint_context = {}
+    agent.handle_booking_query(
+        "房间噪音投诉，影响休息", principal=principal(), context=complaint_context
+    )
+    prompt = agent.handle_booking_query(
+        "第一笔", principal=principal(), context=complaint_context
+    )
+    assert prompt["status"] == "awaiting_ticket_confirmation"
+    complaint = agent.handle_booking_query(
+        "确认", principal=principal(), context=complaint_context
+    )
+
+    assert complaint["status"] == "ticket_created"
+    rows = tickets.list_tickets(guest_id="CUST-001")
+    same_booking = [row for row in rows if row["booking_id"] == booking_id]
+    assert len(same_booking) == 2
+    assert {row["issue_type"] for row in same_booking} == {
+        "ROOM_MAINTENANCE", "NOISE"
+    }
+
+
+def test_service_ticket_operation_id_is_stable_during_confirmation_dialogue(tmp_path):
+    tickets = TicketService(tmp_path / "tickets.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+    agent.handle_booking_query("空调不制冷", principal=principal(), context=context)
+    agent.handle_booking_query("第一笔", principal=principal(), context=context)
+    operation_id = context["pending_ticket_request"]["operation_id"]
+
+    supplemented = agent.handle_booking_query(
+        "补充：已经影响正常休息", principal=principal(), context=context
+    )
+    assert supplemented["status"] == "awaiting_ticket_confirmation"
+    assert context["pending_ticket_request"]["operation_id"] == operation_id
