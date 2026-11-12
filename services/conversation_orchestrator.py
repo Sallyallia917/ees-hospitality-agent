@@ -175,7 +175,7 @@ class ConversationOrchestrator:
             begin_operation(context, booking_id, "booking_issue")
             return self._issue_prompt(result, route)
         if purpose == "select_service_ticket":
-            return self._prepare_service_ticket(result, context, route)
+            return self._prepare_service_ticket(result, context, route, principal)
         return self._simple(route, result["status"], generate_booking_answer(message, result),
             "booking_lookup", data={"booking": result.get("booking"), "cancellation_policy": result.get("cancellation_policy")},
             audit_id=result.get("audit_id"))
@@ -331,13 +331,28 @@ class ConversationOrchestrator:
         detail = self.booking_service.get_my_booking(principal, booking_id)
         if detail.get("status") not in ("ok", "data_incomplete"):
             return self._failure(detail, route)
-        return self._prepare_service_ticket(detail, context, route)
+        return self._prepare_service_ticket(detail, context, route, principal)
 
-    def _prepare_service_ticket(self, detail, context, route):
+    def _prepare_service_ticket(self, detail, context, route, principal):
         booking = detail.get("booking") or {}
         pending = context.get("pending_ticket_request") or {}
         booking_id = booking.get("booking_id")
         context["pending_ticket_booking_id"] = booking_id
+
+        # Repeated requests reuse the existing active ticket instead of reopening
+        # confirmation or creating another ticket for the same booking/issue pair.
+        active = self.ticket_service.get_active_ticket(
+            booking_id, pending.get("issue_type") or "OTHER",
+            guest_id=principal.customer_id,
+        )
+        if active:
+            context["pending_ticket_request"] = None
+            context["pending_ticket_booking_id"] = None
+            context["pending_action"] = None
+            return self._active_ticket_reply(route, active, booking_id)
+
+        pending.setdefault("operation_id", str(uuid.uuid4()))
+        context["pending_ticket_request"] = pending
         if pending.get("issue_type") == "INVOICE" and not pending.get("details"):
             context["pending_action"] = "collect_invoice_details"
             return self._simple(route, "collecting_invoice_details",
@@ -348,6 +363,22 @@ class ConversationOrchestrator:
             f"已关联订单 {booking_id}。拟提交事项：{pending.get('request_text') or '住客服务请求'}。工单类别：{pending.get('issue_type') or 'OTHER'}。请确认是否提交给工作人员处理？回复“确认”或“算了”。",
             "confirm_service_ticket", clarification=True, needs_human=True,
             data={"booking": booking, "issue_type": pending.get("issue_type")})
+
+    def _active_ticket_reply(self, route, item, booking_id):
+        labels = {
+            "SUBMITTED": "已提交，等待受理",
+            "ASSIGNED": "已分配处理人员",
+            "PROCESSING": "处理中",
+            "PENDING_USER": "等待您补充信息",
+            "ESCALATED": "已升级人工处理",
+        }
+        status = labels.get(item.get("status"), item.get("status") or "处理中")
+        return self._simple(
+            route, "existing_ticket",
+            f"这笔订单已有同类工单 {item['ticket_id']}，当前状态：{status}。我已为您查到原工单，不会重复创建。工作人员将继续跟进。",
+            "existing_ticket_reused", needs_human=True,
+            data={"booking_id": booking_id, "ticket": item, "reused": True},
+        )
 
     def _service_ticket_confirmation(self, message, principal, context, route, history=None):
         pending = context.get("pending_ticket_request") or {}
@@ -372,7 +403,7 @@ class ConversationOrchestrator:
         intent = pending.get("intent")
         category = {"booking_issue": "TRANSACTION_ORDER", "invoice_request": "BILLING_DOCUMENT",
                     "complaint": "COMPLAINT_EXPERIENCE", "service_request": "STAY_SERVICE"}.get(intent, "CONSULTATION_OTHER")
-        operation_id = str(uuid.uuid4())
+        operation_id = pending.setdefault("operation_id", str(uuid.uuid4()))
         ticket = self.ticket_service.create_ticket(
             guest_id=principal.customer_id, booking_id=booking_id, category=category,
             priority="HIGH" if intent == "complaint" and any(x in str(pending.get("request_text") or "") for x in ("影响休息", "多次未处理", "严重", "无法入住")) else "NORMAL",
@@ -392,13 +423,15 @@ class ConversationOrchestrator:
                       "booking_snapshot": detail.get("booking") or {},
                       "invoice_details": pending.get("details") if intent == "invoice_request" else None,
                       "execution_boundary": "ticket_only_no_service_execution"})
-        context["pending_ticket_request"] = None
-        context["pending_ticket_booking_id"] = None
-        context["pending_action"] = None
         if not ticket.get("ok"):
             return self._simple(route, "ticket_creation_failed", "工单创建失败，未执行任何现场服务或票据操作，请联系工作人员。",
                                 "ticket_creation_failed", needs_human=True)
         item = ticket["ticket"]
+        context["pending_ticket_request"] = None
+        context["pending_ticket_booking_id"] = None
+        context["pending_action"] = None
+        if not ticket.get("created", False):
+            return self._active_ticket_reply(route, item, booking_id)
         return self._simple(route, "ticket_created",
             f"已创建工单 {item['ticket_id']}，类别：{item['category']}。该工单已提交给人工处理；系统尚未实际安排服务或开具发票。",
             "automatic_ticket_created", needs_human=True, data={"ticket": item, "booking_id": booking_id})
