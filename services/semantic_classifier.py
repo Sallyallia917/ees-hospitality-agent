@@ -7,7 +7,7 @@ INTENTS = {
     "public_knowledge_inquiry", "booking_related_inquiry", "booking_list_query",
     "booking_selection", "booking_issue", "realtime_availability",
     "transaction_request", "cancellation_policy_inquiry", "service_request",
-    "complaint", "invoice_request", "service_ticket_confirmation", "safety_incident", "ambiguous",
+    "complaint", "invoice_request", "service_ticket_confirmation", "ticket_status_inquiry", "safety_incident", "ambiguous",
 }
 
 def _norm(text):
@@ -44,6 +44,9 @@ def classify_by_rules(query, history=None, context=None):
 
     if any(x in text for x in ("燃气", "煤气", "起火", "冒火花", "火花", "电线冒烟", "电线在冒烟", "漏电", "有人受伤", "火灾")):
         return _result("safety_incident", "safety", 1.0)
+
+    if any(x in text for x in ("工单状态", "工单进度", "我的工单", "工单处理到哪", "工单有人处理", "工单怎么样", "服务单状态")):
+        return _result("ticket_status_inquiry", "active_ticket_status", .99)
 
     if _policy_question(text):
         personal = any(x in text for x in ("我的", "我订", "我预订", "我预定", "订单", "房源", "房间", "这笔"))
@@ -192,7 +195,7 @@ def classify_intent(query, history=None, context=None):
     rule = classify_by_rules(query, history, context)
     protected = {"safety_incident", "transaction_request", "realtime_availability",
                  "booking_related_inquiry", "booking_list_query", "booking_selection",
-                 "booking_issue", "cancellation_policy_inquiry", "complaint", "service_request", "invoice_request", "service_ticket_confirmation"}
+                 "booking_issue", "cancellation_policy_inquiry", "complaint", "service_request", "invoice_request", "service_ticket_confirmation", "ticket_status_inquiry"}
     if rule["intent"] in protected:
         return rule
     llm = classify_with_llm(query, history, context)
