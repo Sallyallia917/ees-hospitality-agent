@@ -30,7 +30,7 @@ class ConversationOrchestrator:
         action, intent = route.get("action"), route.get("intent")
 
         handled_actions = {"booking_lookup", "booking_list", "booking_selection",
-                           "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue", "service_ticket_request", "service_ticket_confirmation", "ticket_status_lookup", "clarify_facility_context"}
+                           "booking_policy_lookup", "transaction_confirmation", "transaction_handoff", "booking_issue", "service_ticket_request", "service_ticket_confirmation", "ticket_status_lookup", "clarify_facility_context", "safety_guidance"}
         if action not in handled_actions:
             return {"handled": False, "route": route}
         if action == "clarify_facility_context":
@@ -44,6 +44,8 @@ class ConversationOrchestrator:
 
         if action == "ticket_status_lookup":
             return self._ticket_status_lookup(principal, route)
+        if action == "safety_guidance":
+            return self._safety_incident(message, principal, context, route, history)
         if action == "booking_selection":
             return self._select_candidate(message, principal, context, route)
         if action == "booking_list":
@@ -294,6 +296,61 @@ class ConversationOrchestrator:
         context_message = f"请确认这笔订单是否有误：{b.get('room_type')}，入住 {str(b.get('check_in') or '')[:10]}。请描述具体错误内容。"
         return self._simple(route, "awaiting_issue_details", context_message, "describe_booking_issue",
                             clarification=True, data={"booking": b}, audit_id=detail.get("audit_id"))
+
+    def _safety_incident(self, message, principal, context, route, history=None):
+        # Safety guidance must not be blocked by normal booking lookup or clarification.
+        immediate = (
+            "请先确保自身安全：立即远离危险区域，不要触碰门锁、电器或可疑物品，也不要自行处理危险源。"
+            "如存在燃气泄漏、火情、人身威胁或未经允许进入客房，请立即联系当地紧急服务及现场值班工作人员。"
+            "如果有人仍在房间内或您感到受到威胁，请前往安全、有人值守的公共区域。"
+        )
+        if not principal_is_valid(principal):
+            return self._simple(
+                route, "safety_handoff_required",
+                immediate + "当前无法核验您的演示身份，因此系统没有创建个人工单；请直接联系现场工作人员。",
+                "safety_guidance", needs_human=True,
+                data={"ticket_created": False, "reason": "identity_not_verified"},
+            )
+
+        operation_id = context.setdefault("safety_operation_id", str(uuid.uuid4()))
+        issue_type = (
+            "UNAUTHORIZED_ROOM_ENTRY"
+            if route.get("sub_intent") == "unauthorized_entry"
+            else "SAFETY_INCIDENT"
+        )
+        result = self.ticket_service.create_ticket(
+            guest_id=principal.customer_id,
+            category="COMPLAINT_EXPERIENCE",
+            description=str(message or "住客报告安全事件"),
+            priority="URGENT",
+            idempotency_key=f"{principal.customer_id}:{operation_id}:safety",
+            operation_id=operation_id,
+            metadata={
+                "source": "ai_conversation",
+                "intent": "safety_incident",
+                "issue_type": issue_type,
+                "user_confirmed": True,
+                "requires_human_review": True,
+                "handling_channel": "IMMEDIATE_ON_SITE_ESCALATION",
+                "risk_level": "CRITICAL",
+                "execution_boundary": "alert_ticket_only_no_emergency_dispatch",
+                "conversation_history": (history or [])[-8:],
+            },
+        )
+        if not result.get("ok"):
+            return self._simple(
+                route, "safety_handoff_required",
+                immediate + "系统未能登记工单，请不要等待系统处理，直接联系现场工作人员及当地紧急服务。",
+                "safety_guidance", needs_human=True,
+                data={"ticket_created": False, "error": result.get("error")},
+            )
+        item = result["ticket"]
+        return self._simple(
+            route, "safety_ticket_created",
+            immediate + f"系统已登记高优先级安全事件工单 {item['ticket_id']}，并标记为紧急人工跟进。请注意：演示系统不会自动呼叫救援或派遣现场人员，您仍需直接联系现场工作人员及当地紧急服务。",
+            "safety_guidance", needs_human=True,
+            data={"ticket_created": bool(result.get("created")), "ticket": item},
+        )
 
     def _ticket_status_lookup(self, principal, route):
         rows = self.ticket_service.list_active_tickets(
