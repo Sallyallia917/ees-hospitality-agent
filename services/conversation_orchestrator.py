@@ -39,14 +39,15 @@ class ConversationOrchestrator:
             context["pending_facility_issue"] = str(message)
             return self._simple(route, "needs_clarification", route.get("response") or "您是在咨询设施信息，还是希望反馈入住体验问题？",
                                 "clarify_facility_context", clarification=True)
+        if action == "safety_guidance":
+            return self._safety_incident(message, principal, context, route, history)
+
         if not principal_is_valid(principal):
             return self._simple(route, "unauthenticated",
                 "查询个人订单前，请先在左侧完成演示身份登录。", "login_required")
 
         if action == "ticket_status_lookup":
             return self._ticket_status_lookup(principal, route)
-        if action == "safety_guidance":
-            return self._safety_incident(message, principal, context, route, history)
         if action == "booking_selection":
             return self._select_candidate(message, principal, context, route)
         if action == "booking_list":
