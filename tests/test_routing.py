@@ -52,3 +52,15 @@ def test_unexpected_staff_entry_does_not_route_to_service_faq():
     r = route_question("工作人员未经允许进入客房")
     assert r["intent"] == "safety_incident"
     assert r["action"] == "safety_guidance"
+
+
+def test_unauthorized_room_entry_variants_with_intervening_words_are_safety_incidents():
+    for phrase in (
+        "保洁员未经允许刷卡进入客房",
+        "工作人员没有经过允许就进了房间",
+        "员工刷卡后擅自进入我的客房",
+    ):
+        result = route_question(phrase)
+        assert result["intent"] == "safety_incident"
+        assert result["sub_intent"] == "unauthorized_entry"
+        assert result["action"] == "safety_guidance"
