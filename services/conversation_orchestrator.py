@@ -314,7 +314,13 @@ class ConversationOrchestrator:
                 data={"ticket_created": False, "reason": "identity_not_verified"},
             )
 
-        operation_id = context.setdefault("safety_operation_id", str(uuid.uuid4()))
+        # Keep retries idempotent within the same incident, but do not let a
+        # previous safety report suppress a distinct later incident in this chat.
+        safety_fingerprint = re.sub(r"\\s+", "", str(message or "").lower())
+        if context.get("safety_event_fingerprint") != safety_fingerprint:
+            context["safety_event_fingerprint"] = safety_fingerprint
+            context["safety_operation_id"] = str(uuid.uuid4())
+        operation_id = context["safety_operation_id"]
         issue_type = (
             "UNAUTHORIZED_ROOM_ENTRY"
             if route.get("sub_intent") == "unauthorized_entry"
