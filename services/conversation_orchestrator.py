@@ -316,7 +316,7 @@ class ConversationOrchestrator:
 
         # Keep retries idempotent within the same incident, but do not let a
         # previous safety report suppress a distinct later incident in this chat.
-        safety_fingerprint = re.sub(r"\\s+", "", str(message or "").lower())
+        safety_fingerprint = re.sub(r"\s+", "", str(message or "").lower())
         if context.get("safety_event_fingerprint") != safety_fingerprint:
             context["safety_event_fingerprint"] = safety_fingerprint
             context["safety_operation_id"] = str(uuid.uuid4())
