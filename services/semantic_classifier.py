@@ -42,8 +42,16 @@ def classify_by_rules(query, history=None, context=None):
     history, context = history or [], context or {}
     no_booking = any(x in text for x in ("还没预订", "没有预订", "尚未预订", "没下单", "未下单", "没有订单"))
 
-    if any(x in text for x in ("燃气", "煤气", "起火", "冒火花", "火花", "电线冒烟", "电线在冒烟", "漏电", "有人受伤", "火灾")):
-        return _result("safety_incident", "safety", 1.0)
+    if any(x in text for x in (
+        "燃气", "煤气", "起火", "冒火花", "火花", "电线冒烟", "电线在冒烟",
+        "漏电", "有人受伤", "火灾", "保洁员直接刷卡进来", "保洁直接刷卡进来",
+        "工作人员刷卡进房间", "陌生人进房间", "有人未经允许进入房间",
+        "未经允许进入客房", "擅自进入客房", "没经过允许进房间", "员工进我房间",
+        "有人闯入房间", "有人进了我的房间"
+    )):
+        return _result("safety_incident", "unauthorized_entry" if any(
+            x in text for x in ("刷卡进", "未经允许", "擅自进入", "闯入", "员工进我房间")
+        ) else "safety", 1.0)
 
     if any(x in text for x in ("工单状态", "工单进度", "我的工单", "工单处理到哪", "工单有人处理", "工单怎么样", "服务单状态")):
         return _result("ticket_status_inquiry", "active_ticket_status", .99)
