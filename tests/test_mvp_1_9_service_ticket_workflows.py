@@ -76,7 +76,7 @@ def test_invoice_ticket_collects_details_before_confirmation(tmp_path):
     if first["action"] == "select_booking_for_service_ticket":
         agent.handle_booking_query("第一笔", principal=principal(), context=context)
     assert context["pending_action"] == "collect_invoice_details"
-    details = agent.handle_booking_query("某某科技有限公司，税号 123456，发送邮箱 test@example.com",
+    details = agent.handle_booking_query("企业发票，抬头：某某科技有限公司，税号：91350211M000100Y43，邮箱：test@example.com",
                                          principal=principal(), context=context)
     assert details["status"] == "awaiting_ticket_confirmation"
     assert tickets.list_tickets(guest_id="CUST-001") == []
@@ -199,3 +199,76 @@ def test_guest_ticket_status_query_with_no_active_tickets_is_explicit(tmp_path):
     )
     assert result["status"] == "no_active_tickets"
     assert result["data"]["tickets"] == []
+
+
+def test_personal_invoice_details_are_structured_without_tax_id(tmp_path):
+    tickets = TicketService(tmp_path / "personal-invoice.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+    first = agent.handle_booking_query("开发票", principal=principal(), context=context)
+    if first["action"] == "select_booking_for_service_ticket":
+        agent.handle_booking_query("第一笔", principal=principal(), context=context)
+    result = agent.handle_booking_query(
+        "个人发票，抬头：张三", principal=principal(), context=context
+    )
+    assert result["status"] == "awaiting_ticket_confirmation"
+    details = result["data"]["invoice_details"]
+    assert details["invoice_type"] == "PERSONAL"
+    assert details["title"] == "张三"
+    assert "tax_id" not in details
+
+    created = agent.handle_booking_query(
+        "确认", principal=principal(), context=context
+    )
+    assert created["status"] == "ticket_created"
+    assert created["data"]["ticket"]["metadata"]["invoice_details"]["invoice_type"] == "PERSONAL"
+
+
+def test_company_invoice_rejects_invalid_tax_id_before_confirmation(tmp_path):
+    tickets = TicketService(tmp_path / "invalid-invoice.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+    first = agent.handle_booking_query("开发票", principal=principal(), context=context)
+    if first["action"] == "select_booking_for_service_ticket":
+        agent.handle_booking_query("第一笔", principal=principal(), context=context)
+
+    invalid = agent.handle_booking_query(
+        "企业发票，抬头：某某科技有限公司，税号：123456",
+        principal=principal(), context=context,
+    )
+    assert invalid["status"] == "collecting_invoice_details"
+    assert "18 位" in invalid["answer"]
+    assert tickets.list_tickets(guest_id="CUST-001") == []
+
+    valid = agent.handle_booking_query(
+        "税号：91350211M000100Y43", principal=principal(), context=context
+    )
+    assert valid["status"] == "awaiting_ticket_confirmation"
+    assert valid["data"]["invoice_details"]["tax_id"] == "91350211M000100Y43"
+
+
+def test_unauthorized_room_entry_bypasses_booking_clarification_and_creates_urgent_ticket(tmp_path):
+    tickets = TicketService(tmp_path / "safety.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    result = agent.handle_booking_query(
+        "保洁员直接刷卡进来了，我没有允许",
+        principal=principal(), context={},
+    )
+    assert result["status"] == "safety_ticket_created"
+    ticket = result["data"]["ticket"]
+    assert ticket["issue_type"] == "UNAUTHORIZED_ROOM_ENTRY"
+    assert ticket["priority"] == "URGENT"
+    assert ticket["status"] == "SUBMITTED"
+    assert result["needs_human"] is True
+    assert "不会自动呼叫救援" in result["answer"]
+
+
+def test_safety_incident_gives_immediate_guidance_without_authentication(tmp_path):
+    tickets = TicketService(tmp_path / "safety-unauth.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    result = agent.handle_booking_query(
+        "房间里闻到煤气味", principal=None, context={},
+    )
+    assert result["status"] == "safety_handoff_required"
+    assert "立即远离危险区域" in result["answer"]
+    assert tickets.list_tickets(staff=True) == []
