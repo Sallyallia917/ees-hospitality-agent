@@ -55,6 +55,11 @@ def test_terminal_ticket_releases_business_deduplication(tmp_path, terminal_stat
     if terminal_status == "RESOLVED":
         service.update_ticket(ticket_id, "PROCESSING", "staff")
         service.update_ticket(ticket_id, "RESOLVED", "staff")
+    elif terminal_status == "CLOSED":
+        service.update_ticket(ticket_id, "ASSIGNED", "staff")
+        service.update_ticket(ticket_id, "PROCESSING", "staff")
+        service.update_ticket(ticket_id, "PENDING_USER", "staff")
+        service.update_ticket(ticket_id, "CLOSED", "staff")
     else:
         service.update_ticket(ticket_id, terminal_status, "staff")
     second = service.create_ticket(
@@ -72,6 +77,10 @@ def test_terminal_status_cannot_be_reopened(tmp_path, terminal_status):
     ticket_id = created["ticket"]["ticket_id"]
     if terminal_status == "RESOLVED":
         service.update_ticket(ticket_id, "PROCESSING", "staff")
+    elif terminal_status == "CLOSED":
+        service.update_ticket(ticket_id, "ASSIGNED", "staff")
+        service.update_ticket(ticket_id, "PROCESSING", "staff")
+        service.update_ticket(ticket_id, "PENDING_USER", "staff")
     result = service.update_ticket(ticket_id, terminal_status, "staff")
     assert result["ok"] is True
     reopened = service.update_ticket(ticket_id, "PROCESSING", "staff")
