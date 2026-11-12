@@ -53,7 +53,12 @@ def classify_by_rules(query, history=None, context=None):
             x in text for x in ("刷卡进", "未经允许", "擅自进入", "闯入", "员工进我房间")
         ) else "safety", 1.0)
 
-    if any(x in text for x in ("工单状态", "工单进度", "我的工单", "工单处理到哪", "工单有人处理", "工单怎么样", "服务单状态")):
+    if any(x in text for x in (
+        "工单状态", "工单进度", "工单进展", "我的工单", "工单处理到哪",
+        "工单有人处理", "工单怎么样", "工单怎么还没", "工单有人接单",
+        "有人接单了吗", "服务单状态", "服务单进展", "维修处理到哪",
+        "我的申请处理到哪"
+    )):
         return _result("ticket_status_inquiry", "active_ticket_status", .99)
 
     if _policy_question(text):
@@ -86,6 +91,8 @@ def classify_by_rules(query, history=None, context=None):
             return _result("public_knowledge_inquiry", "facility_question", .95, "context_rules")
         return _result("service_request", "facility_or_complaint_clarification", .70)
     if context.get("pending_action") == "collect_invoice_details":
+        if any(x in text for x in ("算了", "取消", "不需要", "先不用", "不开发票", "不申请了")):
+            return _result("service_ticket_confirmation", "reject_ticket", .99)
         return _result("invoice_request", "invoice_details", .99)
     if context.get("pending_action") == "confirm_service_ticket":
         if any(x in text for x in ("确认", "是的", "没错", "对", "确定", "提交")):
