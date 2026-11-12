@@ -1,4 +1,5 @@
 """Stateful orchestration for authenticated, read-only booking queries and safe handoff."""
+import json
 import re
 import uuid
 from services.identity import principal_is_valid
@@ -386,12 +387,12 @@ class ConversationOrchestrator:
     def _parse_invoice_fields(message, current=None):
         fields = dict(current or {})
         text = str(message or "").strip()
-        email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", text)
+        email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
         if email_match:
             fields["email"] = email_match.group(0)
 
         tax_match = re.search(
-            r"(?:税号|纳税人识别号|统一社会信用代码)\\s*[:：为]?\\s*([0-9A-Za-z]{6,20})",
+            r"(?:税号|纳税人识别号|统一社会信用代码)\s*[:：为]?\s*([0-9A-Za-z]{6,20})",
             text, re.IGNORECASE,
         )
         if tax_match:
@@ -404,11 +405,11 @@ class ConversationOrchestrator:
                 fields["tax_id_invalid"] = True
 
         title_match = re.search(
-            r"(?:发票抬头|抬头|企业名称|公司名称|单位名称)\\s*[:：为]?\\s*([^，,；;\\s]+)",
+            r"(?:发票抬头|抬头|企业名称|公司名称|单位名称)\s*[:：为]?\s*([^，,；;\s]+)",
             text,
         )
         company_match = re.search(
-            r"([^，,；;\\s]{2,40}(?:有限责任公司|股份有限公司|有限公司|公司|企业|工作室))",
+            r"([^，,；;\s]{2,40}(?:有限责任公司|股份有限公司|有限公司|公司|企业|工作室))",
             text,
         )
         if title_match:
@@ -424,7 +425,7 @@ class ConversationOrchestrator:
         elif fields.get("invoice_type") == "PERSONAL" and any(
             token in text for token in ("姓名", "抬头")
         ):
-            name_match = re.search(r"(?:姓名|抬头)\\s*[:：为]?\\s*([^，,；;\\s]+)", text)
+            name_match = re.search(r"(?:姓名|抬头)\s*[:：为]?\s*([^，,；;\s]+)", text)
             if name_match:
                 fields["title"] = name_match.group(1).strip()
 
