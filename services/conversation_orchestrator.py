@@ -382,15 +382,102 @@ class ConversationOrchestrator:
             "ticket_status_lookup", needs_human=True, data={"tickets": rows},
         )
 
+    @staticmethod
+    def _parse_invoice_fields(message, current=None):
+        fields = dict(current or {})
+        text = str(message or "").strip()
+        email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", text)
+        if email_match:
+            fields["email"] = email_match.group(0)
+
+        tax_match = re.search(
+            r"(?:税号|纳税人识别号|统一社会信用代码)\\s*[:：为]?\\s*([0-9A-Za-z]{6,20})",
+            text, re.IGNORECASE,
+        )
+        if tax_match:
+            candidate = tax_match.group(1).upper()
+            if re.fullmatch(r"[0-9A-HJ-NPQRTUWXY]{18}", candidate):
+                fields["tax_id"] = candidate
+                fields.pop("tax_id_invalid", None)
+            else:
+                fields.pop("tax_id", None)
+                fields["tax_id_invalid"] = True
+
+        title_match = re.search(
+            r"(?:发票抬头|抬头|企业名称|公司名称|单位名称)\\s*[:：为]?\\s*([^，,；;\\s]+)",
+            text,
+        )
+        company_match = re.search(
+            r"([^，,；;\\s]{2,40}(?:有限责任公司|股份有限公司|有限公司|公司|企业|工作室))",
+            text,
+        )
+        if title_match:
+            fields["title"] = title_match.group(1).strip()
+        elif company_match:
+            fields["title"] = company_match.group(1).strip()
+
+        if any(token in text for token in ("企业", "公司", "单位", "对公")) or fields.get("tax_id"):
+            fields["invoice_type"] = "COMPANY"
+        elif any(token in text for token in ("个人", "个人抬头")):
+            fields["invoice_type"] = "PERSONAL"
+            fields.setdefault("title", "个人")
+        elif fields.get("invoice_type") == "PERSONAL" and any(
+            token in text for token in ("姓名", "抬头")
+        ):
+            name_match = re.search(r"(?:姓名|抬头)\\s*[:：为]?\\s*([^，,；;\\s]+)", text)
+            if name_match:
+                fields["title"] = name_match.group(1).strip()
+
+        return fields
+
+    @staticmethod
+    def _invoice_missing_fields(fields):
+        missing = []
+        if fields.get("invoice_type") not in {"PERSONAL", "COMPANY"}:
+            missing.append("发票类型（个人或企业）")
+        if not fields.get("title"):
+            missing.append("发票抬头")
+        if fields.get("invoice_type") == "COMPANY":
+            if not fields.get("tax_id"):
+                missing.append("18 位统一社会信用代码/纳税人识别号")
+        return missing
+
+    @staticmethod
+    def _invoice_details_prompt(fields):
+        missing = ConversationOrchestrator._invoice_missing_fields(fields)
+        if fields.get("tax_id_invalid"):
+            return "企业税号格式不正确，请提供 18 位统一社会信用代码/纳税人识别号。"
+        if missing:
+            return "还需要补充：" + "、".join(missing) + "。接收邮箱为选填项，也可以一并提供。"
+        email = fields.get("email") or "未提供（可后续由工作人员联系确认）"
+        return (
+            f"已记录{ '企业' if fields['invoice_type'] == 'COMPANY' else '个人' }发票信息："
+            f"抬头 {fields['title']}；"
+            f"{'税号 ' + fields['tax_id'] + '；' if fields.get('tax_id') else ''}"
+            f"接收邮箱 {email}。请确认是否提交发票申请工单？回复“确认”或“算了”。"
+        )
+
     def _service_ticket_request(self, message, principal, context, route):
         pending = context.get("pending_ticket_request") or {}
         if context.get("pending_action") == "collect_invoice_details":
-            pending["details"] = str(pending.get("details") or "") + "；" + str(message)
+            pending["details"] = self._parse_invoice_fields(
+                message, pending.get("details") if isinstance(pending.get("details"), dict) else {}
+            )
+            missing = self._invoice_missing_fields(pending["details"])
             context["pending_ticket_request"] = pending
+            if missing or pending["details"].get("tax_id_invalid"):
+                return self._simple(
+                    route, "collecting_invoice_details",
+                    self._invoice_details_prompt(pending["details"]),
+                    "collect_invoice_details", clarification=True,
+                )
             context["pending_action"] = "confirm_service_ticket"
-            return self._simple(route, "awaiting_ticket_confirmation",
-                f"已记录开票信息：{pending['details']}。请确认是否提交发票申请工单？回复“确认”或“算了”。",
-                "confirm_service_ticket", clarification=True, needs_human=True)
+            return self._simple(
+                route, "awaiting_ticket_confirmation",
+                self._invoice_details_prompt(pending["details"]),
+                "confirm_service_ticket", clarification=True, needs_human=True,
+                data={"invoice_details": pending["details"]},
+            )
         intent = route.get("intent")
         if not pending or pending.get("intent") != intent:
             facility_context = str(context.get("pending_facility_issue") or "")
@@ -444,9 +531,11 @@ class ConversationOrchestrator:
         context["pending_ticket_request"] = pending
         if pending.get("issue_type") == "INVOICE" and not pending.get("details"):
             context["pending_action"] = "collect_invoice_details"
-            return self._simple(route, "collecting_invoice_details",
-                f"已关联订单 {booking_id}。请提供发票抬头及开票所需信息（如企业税号、接收邮箱）；个人抬头可说明无需税号。",
-                "collect_invoice_details", clarification=True)
+            return self._simple(
+                route, "collecting_invoice_details",
+                f"已关联订单 {booking_id}。请说明开具个人还是企业发票，并提供发票抬头；企业发票还需 18 位统一社会信用代码/纳税人识别号。接收邮箱为选填项。",
+                "collect_invoice_details", clarification=True,
+            )
         context["pending_action"] = "confirm_service_ticket"
         return self._simple(route, "awaiting_ticket_confirmation",
             f"已关联订单 {booking_id}。拟提交事项：{pending.get('request_text') or '住客服务请求'}。工单类别：{pending.get('issue_type') or 'OTHER'}。请确认是否提交给工作人员处理？回复“确认”或“算了”。",
@@ -482,6 +571,16 @@ class ConversationOrchestrator:
             context["pending_ticket_booking_id"] = None
             context["pending_action"] = None
             return self._simple(route, "ticket_cancelled", "好的，已取消本次工单提交，没有创建工单。", "ticket_aborted")
+        if pending.get("issue_type") == "INVOICE":
+            invoice_details = pending.get("details") if isinstance(pending.get("details"), dict) else {}
+            missing = self._invoice_missing_fields(invoice_details)
+            if missing or invoice_details.get("tax_id_invalid"):
+                context["pending_action"] = "collect_invoice_details"
+                return self._simple(
+                    route, "collecting_invoice_details",
+                    self._invoice_details_prompt(invoice_details),
+                    "collect_invoice_details", clarification=True,
+                )
         booking_id = context.get("pending_ticket_booking_id")
         if not pending or not booking_id:
             return self._simple(route, "needs_clarification", "当前没有待确认的工单事项，请重新描述您的需求。", "service_ticket_context_missing", clarification=True)
@@ -496,7 +595,12 @@ class ConversationOrchestrator:
         ticket = self.ticket_service.create_ticket(
             guest_id=principal.customer_id, booking_id=booking_id, category=category,
             priority="HIGH" if intent == "complaint" and any(x in str(pending.get("request_text") or "") for x in ("影响休息", "多次未处理", "严重", "无法入住")) else "NORMAL",
-            description=(pending.get("request_text") or "") + (("；补充信息：" + pending["details"]) if pending.get("details") else ""),
+            description=(pending.get("request_text") or "") + (
+                ("；发票信息：" + json.dumps(pending["details"], ensure_ascii=False))
+                if intent == "invoice_request" and pending.get("details") else
+                ("；补充信息：" + str(pending["details"]))
+                if pending.get("details") else ""
+            ),
             idempotency_key=f"{principal.customer_id}:{operation_id}:service",
             operation_id=operation_id,
             metadata={"source": "ai_conversation", "intent": intent,
