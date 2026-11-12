@@ -271,6 +271,24 @@ class TicketService:
             ).fetchone()
             return {"ok": True, "created": True, "ticket": self._row(row)}
 
+    def list_active_tickets(self, guest_id, booking_id=None, limit=10):
+        """List only the authenticated guest's active tickets."""
+        sql = """
+            SELECT * FROM tickets
+            WHERE guest_id=?
+              AND status IN ('SUBMITTED', 'ASSIGNED', 'PROCESSING',
+                             'PENDING_USER', 'ESCALATED')
+        """
+        params = [str(guest_id)]
+        if booking_id:
+            sql += " AND booking_id=?"
+            params.append(str(booking_id))
+        sql += " ORDER BY updated_at DESC LIMIT ?"
+        params.append(max(1, min(int(limit), 50)))
+        with self._connection() as conn:
+            rows = conn.execute(sql, params).fetchall()
+        return [self._row(row) for row in rows]
+
     def get_active_ticket(self, booking_id, issue_type, guest_id=None):
         """Return the active ticket for a booking/issue pair, optionally owner-scoped."""
         normalized_issue_type = normalize_issue_type(issue_type)
