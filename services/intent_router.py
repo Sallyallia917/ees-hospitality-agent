@@ -18,6 +18,11 @@ def route_question(query, context=None, history=None):
         return _make(intent, "none", status, ["现场安全信息"], False, False, "critical",
             "safety_guidance", "请立即远离危险区域，不要自行操作或维修；如有燃气泄漏、起火或人身危险，请联系当地紧急服务及现场工作人员。",
             "安全事件优先于其他意图，直接进入安全响应。", True, sub, method)
+    if intent == "ticket_status_inquiry":
+        return _make(intent, "none", status, ["verified_identity", "active_service_tickets"],
+            False, False, "medium", "ticket_status_lookup",
+            "查询当前登录住客名下的活动工单，仅返回本人记录及当前状态。",
+            "工单状态属于个人服务记录，必须按已认证住客身份进行范围过滤。", False, sub, method)
     if intent == "booking_list_query":
         return _make(intent, "required", status, ["verified_identity", "booking_records"], False, False,
             "medium", "booking_list", "查询当前登录用户有权访问的订单列表；订单服务执行身份和归属校验。",
