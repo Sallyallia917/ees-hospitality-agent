@@ -364,3 +364,95 @@ def test_natural_ticket_progress_phrases_route_to_status_lookup():
         result = classify_by_rules(phrase)
         assert result["intent"] == "ticket_status_inquiry"
         assert result["sub_intent"] == "active_ticket_status"
+
+
+def test_natural_language_refund_and_maintenance_progress_queries_are_classified():
+    assert classify_by_rules("我的退款啥进度了")["sub_intent"] == "refund_status"
+    assert classify_by_rules("我的订单退款进度如何了")["intent"] == "ticket_status_inquiry"
+    assert classify_by_rules("空调还没人来修吗")["sub_intent"] == "maintenance_status"
+    assert classify_by_rules("发票开好了吗")["sub_intent"] == "invoice_status"
+
+
+def test_ticket_status_query_filters_by_business_issue_type(tmp_path):
+    tickets = TicketService(tmp_path / "ticket-status-filter.sqlite3")
+    refund = tickets.create_ticket(
+        "CUST-001", "退款申请", "REFUND_REQUEST",
+        booking_id="DEMO-BOOKING-2001",
+    )
+    maintenance = tickets.create_ticket(
+        "CUST-001", "空调维修", "MAINTENANCE",
+        booking_id="DEMO-BOOKING-2001",
+    )
+    agent = ConversationOrchestrator(BookingService(), tickets)
+
+    refund_result = agent.handle_booking_query(
+        "我的退款啥进度了", principal=principal(), context={},
+    )
+    assert refund_result["status"] == "active_tickets_found"
+    assert [x["ticket_id"] for x in refund_result["data"]["tickets"]] == [
+        refund["ticket"]["ticket_id"]
+    ]
+
+    maintenance_result = agent.handle_booking_query(
+        "空调还没人来修吗", principal=principal(), context={},
+    )
+    assert maintenance_result["status"] == "active_tickets_found"
+    assert [x["ticket_id"] for x in maintenance_result["data"]["tickets"]] == [
+        maintenance["ticket"]["ticket_id"]
+    ]
+
+
+def test_guest_can_append_note_to_recent_active_ticket_without_new_ticket(tmp_path):
+    tickets = TicketService(tmp_path / "ticket-note.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+
+    first = agent.handle_booking_query(
+        "空调不制冷", principal=principal(), context=context,
+    )
+    if first["action"] == "select_booking_for_service_ticket":
+        agent.handle_booking_query("第一笔", principal=principal(), context=context)
+    created = agent.handle_booking_query(
+        "确认", principal=principal(), context=context,
+    )
+    ticket_id = created["data"]["ticket"]["ticket_id"]
+
+    prompt = agent.handle_booking_query(
+        "再次反馈", principal=principal(), context=context,
+    )
+    assert prompt["status"] == "needs_clarification"
+    assert context["pending_action"] == "collect_ticket_note"
+
+    appended = agent.handle_booking_query(
+        "空调还是不制冷，已经影响休息", principal=principal(), context=context,
+    )
+    assert appended["status"] == "ticket_note_added"
+    assert appended["data"]["ticket"]["ticket_id"] == ticket_id
+    assert appended["data"]["ticket"]["status"] == "SUBMITTED"
+    history = appended["data"]["ticket"]["history"]
+    assert any(
+        item.get("event") == "GUEST_NOTE_ADDED"
+        and "影响休息" in item.get("note", "")
+        for item in history
+    )
+    assert len(tickets.list_tickets(guest_id="CUST-001")) == 1
+
+
+def test_append_ticket_note_rejects_non_owner_and_terminal_ticket(tmp_path):
+    tickets = TicketService(tmp_path / "ticket-note-boundaries.sqlite3")
+    created = tickets.create_ticket(
+        "CUST-001", "空调维修", "MAINTENANCE",
+        booking_id="DEMO-BOOKING-2001",
+    )
+    ticket_id = created["ticket"]["ticket_id"]
+
+    unauthorized = tickets.append_ticket_note(ticket_id, "CUST-002", "补充内容")
+    assert unauthorized == {"ok": False, "error": "not_found"}
+
+    resolved = tickets.update_ticket(
+        ticket_id, "CANCELLED", actor="staff", note="结束工单"
+    )
+    assert resolved["ok"]
+    terminal = tickets.append_ticket_note(ticket_id, "CUST-001", "再次补充")
+    assert terminal["ok"] is False
+    assert terminal["error"] == "ticket_not_active"
