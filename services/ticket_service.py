@@ -289,6 +289,34 @@ class TicketService:
             rows = conn.execute(sql, params).fetchall()
         return [self._row(row) for row in rows]
 
+    def append_ticket_note(self, ticket_id, guest_id, note):
+        """Append a guest note to an active ticket without changing its status."""
+        note = str(note or "").strip()
+        if not note:
+            return {"ok": False, "error": "note_required"}
+        with self._connection(write=True) as conn:
+            row = conn.execute(
+                "SELECT * FROM tickets WHERE ticket_id=? AND guest_id=?",
+                (str(ticket_id), str(guest_id)),
+            ).fetchone()
+            if row is None:
+                return {"ok": False, "error": "not_found"}
+            if row["status"] not in ACTIVE_STATUSES:
+                return {"ok": False, "error": "ticket_not_active", "status": row["status"]}
+            history = json.loads(row["history_json"])
+            history.append({
+                "event": "GUEST_NOTE_ADDED", "at": self._now(),
+                "actor": "guest", "note": note,
+            })
+            conn.execute(
+                "UPDATE tickets SET updated_at=?, history_json=? WHERE ticket_id=?",
+                (self._now(), json.dumps(history, ensure_ascii=False), str(ticket_id)),
+            )
+            updated = conn.execute(
+                "SELECT * FROM tickets WHERE ticket_id=?", (str(ticket_id),)
+            ).fetchone()
+            return {"ok": True, "ticket": self._row(updated)}
+
     def get_active_ticket(self, booking_id, issue_type, guest_id=None):
         """Return the active ticket for a booking/issue pair, optionally owner-scoped."""
         normalized_issue_type = normalize_issue_type(issue_type)
