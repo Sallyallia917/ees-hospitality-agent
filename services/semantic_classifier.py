@@ -65,6 +65,23 @@ def classify_by_rules(query, history=None, context=None):
             1.0
         )
 
+    progress_terms = ("进度", "进展", "到哪", "处理了吗", "处理好了吗", "到账了吗",
+                      "还没到账", "还没来", "没人来", "还没人", "什么时候来",
+                      "开好了吗", "开出来了吗", "有人接单了吗", "工单状态")
+    if context.get("pending_action") == "collect_ticket_note":
+        return _result("service_request", "append_ticket_note_content", .99, "context_rules")
+    if context.get("last_ticket_context") and any(x in text for x in ("再次反馈", "补充反馈", "补充一下", "还有情况")):
+        return _result("service_request", "append_ticket_note", .99, "context_rules")
+    if any(x in text for x in ("我的退款", "退款")) and any(x in text for x in progress_terms):
+        return _result("ticket_status_inquiry", "refund_status", .99)
+    if any(x in text for x in ("空调", "维修", "漏水", "门锁")) and any(x in text for x in progress_terms):
+        return _result("ticket_status_inquiry", "maintenance_status", .99)
+    if any(x in text for x in ("保洁", "打扫", "清洁")) and any(x in text for x in progress_terms):
+        return _result("ticket_status_inquiry", "cleaning_status", .99)
+    if any(x in text for x in ("发票", "开票")) and any(x in text for x in progress_terms):
+        return _result("ticket_status_inquiry", "invoice_status", .99)
+    if any(x in text for x in ("投诉", "商家")) and any(x in text for x in progress_terms):
+        return _result("ticket_status_inquiry", "complaint_status", .99)
     if any(x in text for x in (
         "工单状态", "工单进度", "工单进展", "我的工单", "工单处理到哪",
         "工单有人处理", "工单怎么样", "工单怎么还没", "工单有人接单",
