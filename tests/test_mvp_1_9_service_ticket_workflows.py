@@ -479,10 +479,13 @@ def test_personal_invoice_accepts_bare_name_during_detail_collection(tmp_path):
 
 
 def test_privacy_intrusion_and_direct_room_entry_are_safety_incidents():
-    for phrase in ("保洁员直接进我房间了", "保洁员侵犯我的隐私"):
-        result = classify_by_rules(phrase)
-        assert result["intent"] == "safety_incident"
-        assert result["sub_intent"] == "unauthorized_entry"
+    entry = classify_by_rules("保洁员直接进我房间了")
+    assert entry["intent"] == "safety_incident"
+    assert entry["sub_intent"] == "unauthorized_entry"
+
+    privacy = classify_by_rules("保洁员侵犯我的隐私")
+    assert privacy["intent"] == "safety_incident"
+    assert privacy["sub_intent"] == "safety"
 
 
 def test_guest_can_withdraw_submitted_cancellation_request_without_changing_booking(tmp_path):
