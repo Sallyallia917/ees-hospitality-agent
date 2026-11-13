@@ -456,3 +456,30 @@ def test_append_ticket_note_rejects_non_owner_and_terminal_ticket(tmp_path):
     terminal = tickets.append_ticket_note(ticket_id, "CUST-001", "再次补充")
     assert terminal["ok"] is False
     assert terminal["error"] == "ticket_not_active"
+
+
+def test_personal_invoice_accepts_bare_name_during_detail_collection(tmp_path):
+    tickets = TicketService(tmp_path / "personal-invoice-bare-name.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+    first = agent.handle_booking_query(
+        "开发票", principal=principal(), context=context,
+    )
+    if first["action"] == "select_booking_for_service_ticket":
+        agent.handle_booking_query("第一笔", principal=principal(), context=context)
+    selected_type = agent.handle_booking_query(
+        "个人发票", principal=principal(), context=context,
+    )
+    assert selected_type["status"] == "collecting_invoice_details"
+    name = agent.handle_booking_query(
+        "张三", principal=principal(), context=context,
+    )
+    assert name["status"] == "awaiting_ticket_confirmation"
+    assert name["data"]["invoice_details"]["title"] == "张三"
+
+
+def test_privacy_intrusion_and_direct_room_entry_are_safety_incidents():
+    for phrase in ("保洁员直接进我房间了", "保洁员侵犯我的隐私"):
+        result = classify_by_rules(phrase)
+        assert result["intent"] == "safety_incident"
+        assert result["sub_intent"] == "unauthorized_entry"
