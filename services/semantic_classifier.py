@@ -74,6 +74,11 @@ def classify_by_rules(query, history=None, context=None):
     progress_terms = ("进度", "进展", "到哪", "处理了吗", "处理好了吗", "到账了吗",
                       "还没到账", "还没来", "没人来", "还没人", "什么时候来",
                       "开好了吗", "开出来了吗", "有人接单了吗", "工单状态")
+    if any(x in text for x in ("不取消了", "不用取消了", "不想取消了", "要正常入住", "继续正常入住", "撤回取消申请")):
+        operations = context.get("booking_operations") or []
+        if any(isinstance(item, dict) and item.get("operation_type") == "cancel_or_refund"
+               and item.get("ticket_id") for item in operations):
+            return _result("transaction_request", "withdraw_cancel_request", .99, "context_rules")
     if context.get("pending_action") == "collect_ticket_note":
         return _result("service_request", "append_ticket_note_content", .99, "context_rules")
     if context.get("last_ticket_context") and any(x in text for x in ("再次反馈", "补充反馈", "补充一下", "还有情况")):
