@@ -555,6 +555,10 @@ def test_trip_change_clarification_separates_cancel_from_reschedule(tmp_path):
     cancel = agent.handle_booking_query(
         "取消订单，申请退款", principal=principal(), context=context
     )
+    if cancel.get("action") == "select_booking_for_transaction":
+        cancel = agent.handle_booking_query(
+            "第一笔", principal=principal(), context=context
+        )
     assert cancel["status"] == "awaiting_confirmation"
     assert context["pending_action"] == "confirm_transaction"
 
