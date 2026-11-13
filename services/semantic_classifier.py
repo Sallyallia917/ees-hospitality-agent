@@ -19,7 +19,9 @@ def _result(intent, sub_intent, confidence, method="rules", entities=None):
 
 def _policy_question(text):
     terms = ("取消政策", "取消规则", "退款政策", "退款规则", "能取消吗",
-             "可以取消吗", "能不能取消", "可不可以取消", "是否可以取消",
+             "可以取消吗", "可以取消嘛", "能取消嘛", "能不能取消",
+             "能不能取消嘛", "可不可以取消", "是否可以取消",
+             "可以退订吗", "可以退订嘛", "能退订吗", "能退订嘛",
              "取消会扣钱吗", "取消要收费吗")
     return any(x in text for x in terms) or (
         any(x in text for x in ("改成", "改为", "换成", "换为")) and
@@ -27,7 +29,7 @@ def _policy_question(text):
         not any(x in text for x in ("帮我", "请把", "我要", "我想"))
     ) or (
         any(x in text for x in ("取消", "退款")) and
-        any(x in text for x in ("政策", "规则", "能吗", "可以吗", "可不可以", "能不能"))
+        any(x in text for x in ("政策", "规则", "能吗", "可以吗", "可以嘛", "可不可以", "能不能"))
     )
 
 def _transaction_request(text):
