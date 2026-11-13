@@ -631,5 +631,4 @@ def test_explicit_reschedule_after_trip_change_clarification_hands_off(tmp_path)
     assert result["status"] == "booking_change_handoff"
     assert result["needs_human"] is True
     assert "不连接 PMS" in result["answer"]
-    assert tickets_count := agent.ticket_service.list_tickets(guest_id="CUST-001")
-    assert tickets_count == []
+    assert agent.ticket_service.list_tickets(guest_id="CUST-001") == []
