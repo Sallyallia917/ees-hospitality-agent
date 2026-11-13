@@ -46,7 +46,9 @@ def classify_by_rules(query, history=None, context=None):
         "保洁员直接刷卡进来", "保洁直接刷卡进来", "工作人员刷卡进房间",
         "陌生人进房间", "有人未经允许进入房间", "未经允许进入客房",
         "擅自进入客房", "没经过允许进房间", "员工进我房间",
-        "有人闯入房间", "有人进了我的房间"
+        "有人闯入房间", "有人进了我的房间", "直接进我房间", "直接进了我房间",
+        "未经同意进我房间", "没经过我同意进房间", "侵犯我的隐私", "侵犯隐私",
+        "擅自进入我的房间", "保洁员进我房间", "保洁进我房间"
     )) or bool(re.search(
         r"(?:保洁员|保洁|工作人员|员工|陌生人).{0,8}(?:刷卡|进入|进来|进了|闯入).{0,8}(?:房间|客房)",
         text
@@ -54,11 +56,15 @@ def classify_by_rules(query, history=None, context=None):
         r"(?:未经允许|未获允许|没有允许|没经过允许).{0,8}(?:刷卡|进入|进了|进房间|进客房)",
         text
     ))
+    privacy_intrusion = any(x in text for x in (
+        "侵犯我的隐私", "侵犯隐私", "偷拍", "偷看", "未经允许进入",
+        "未经同意进入", "擅自进入我的房间", "直接进我房间"
+    ))
     safety_hazard = any(x in text for x in (
         "燃气", "煤气", "起火", "冒火花", "火花", "电线冒烟",
         "电线在冒烟", "漏电", "有人受伤", "火灾"
     ))
-    if unauthorized_entry or safety_hazard:
+    if unauthorized_entry or privacy_intrusion or safety_hazard:
         return _result(
             "safety_incident",
             "unauthorized_entry" if unauthorized_entry else "safety",
