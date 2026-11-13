@@ -423,7 +423,9 @@ class ConversationOrchestrator:
         )
 
     def _ticket_status_lookup(self, principal, route):
-        rows = self.ticket_service.list_active_tickets(
+        # Progress lookup includes terminal states as well as active tickets:
+        # guests need to know whether a request was resolved, cancelled or closed.
+        rows = self.ticket_service.list_tickets(
             guest_id=principal.customer_id, limit=50
         )
         issue_types = {
@@ -442,8 +444,8 @@ class ConversationOrchestrator:
                 "cleaning_status": "保洁", "invoice_status": "发票",
                 "complaint_status": "投诉",
             }.get(route.get("sub_intent"))
-            message = (f"目前没有查询到您名下仍在处理中的{target_label}工单。" if target_label
-                       else "目前没有查询到您名下仍在处理中的服务工单。")
+            message = (f"目前没有查询到您名下的{target_label}工单记录。" if target_label
+                       else "目前没有查询到您名下的服务工单记录。")
             return self._simple(
                 route, "no_active_tickets", message + "如果您刚提交过申请，可以稍后再查；如需反馈新问题，可以直接告诉我。",
                 "ticket_status_lookup", data={"tickets": []},
@@ -454,8 +456,11 @@ class ConversationOrchestrator:
             "PROCESSING": "处理中",
             "PENDING_USER": "等待您补充信息",
             "ESCALATED": "已升级人工处理",
+            "RESOLVED": "已处理完成",
+            "CANCELLED": "已取消",
+            "CLOSED": "已关闭归档",
         }
-        lines = ["查询到您名下以下处理中工单："]
+        lines = ["查询到您名下以下工单记录："]
         for item in rows:
             status = labels.get(item.get("status"), item.get("status") or "状态未知")
             lines.append(
