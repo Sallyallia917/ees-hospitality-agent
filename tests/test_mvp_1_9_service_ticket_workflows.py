@@ -585,14 +585,15 @@ def test_merchant_unable_to_fulfill_creates_complaint_ticket_after_confirmation(
             "第一笔", principal=principal(), context=context
         )
     assert first["status"] == "awaiting_ticket_confirmation"
-    assert first["data"]["issue_type"] == "MERCHANT_COMPLAINT"
+    assert first["data"]["issue_type"] == "BOOKING_ERROR"
     assert tickets.list_tickets(guest_id="CUST-001") == []
 
     created = agent.handle_booking_query(
         "确认", principal=principal(), context=context
     )
     assert created["status"] == "ticket_created"
-    assert created["data"]["ticket"]["issue_type"] == "MERCHANT_COMPLAINT"
+    assert created["data"]["ticket"]["issue_type"] == "BOOKING_ERROR"
+    assert created["data"]["ticket"]["category"] == "TRANSACTION_ORDER"
     assert created["needs_human"] is True
 
 
