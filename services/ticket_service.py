@@ -289,6 +289,35 @@ class TicketService:
             rows = conn.execute(sql, params).fetchall()
         return [self._row(row) for row in rows]
 
+    def withdraw_guest_ticket(self, ticket_id, guest_id, note="住客撤回申请"):
+        """Allow the owner to withdraw only a not-yet-assigned ticket."""
+        with self._connection(write=True) as conn:
+            row = conn.execute(
+                "SELECT * FROM tickets WHERE ticket_id=? AND guest_id=?",
+                (str(ticket_id), str(guest_id)),
+            ).fetchone()
+            if row is None:
+                return {"ok": False, "error": "not_found"}
+            if row["status"] != "SUBMITTED":
+                return {
+                    "ok": False, "error": "manual_review_required",
+                    "status": row["status"],
+                }
+            history = json.loads(row["history_json"])
+            now = self._now()
+            history.append({
+                "status": "CANCELLED", "at": now, "actor": "guest",
+                "note": str(note or "住客撤回申请"),
+            })
+            conn.execute(
+                "UPDATE tickets SET status='CANCELLED', updated_at=?, history_json=? WHERE ticket_id=?",
+                (now, json.dumps(history, ensure_ascii=False), str(ticket_id)),
+            )
+            updated = conn.execute(
+                "SELECT * FROM tickets WHERE ticket_id=?", (str(ticket_id),)
+            ).fetchone()
+            return {"ok": True, "ticket": self._row(updated)}
+
     def append_ticket_note(self, ticket_id, guest_id, note):
         """Append a guest note to an active ticket without changing its status."""
         note = str(note or "").strip()
