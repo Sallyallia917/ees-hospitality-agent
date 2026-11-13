@@ -101,6 +101,31 @@ def classify_by_rules(query, history=None, context=None):
     )):
         return _result("ticket_status_inquiry", "active_ticket_status", .99)
 
+    if context.get("pending_action") == "confirm_transaction" and any(
+        x in text for x in ("免费取消", "免费退订", "免费退款")
+    ):
+        return _result("transaction_request", "confirm_transaction", .99, "context_rules")
+
+    if context.get("pending_action") == "clarify_trip_change":
+        if any(x in text for x in ("取消", "退款", "退订", "不去了")):
+            return _result("transaction_request", "booking_cancel_or_refund", .99, "context_rules")
+        if any(x in text for x in ("改期", "改日期", "调整日期", "换日期", "换一天", "延期入住")):
+            return _result("transaction_request", "booking_change_handoff", .99, "context_rules")
+        return _result("transaction_request", "clarify_trip_change", .80, "context_rules")
+
+    if any(x in text for x in (
+        "商家没房接待", "商家没有房接待", "商家没房了", "商家无法接待",
+        "商家不能接待", "房东没房", "房东无法接待", "酒店没房接待",
+        "无法按预订接待", "无法提供已预订房间", "商家无法履约"
+    )):
+        return _result("service_request", "merchant_unable_to_fulfill", .99)
+
+    if any(x in text for x in (
+        "计划有变", "行程有变", "去不了了", "住不了了", "无法按计划入住",
+        "不能按计划入住", "行程临时变了", "临时有事去不了"
+    )):
+        return _result("transaction_request", "clarify_trip_change", .95)
+
     if _policy_question(text):
         personal = any(x in text for x in ("我的", "我订", "我预订", "我预定", "订单", "房源", "房间", "这笔"))
         if personal or context.get("active_booking_id") or context.get("candidate_booking_ids"):
