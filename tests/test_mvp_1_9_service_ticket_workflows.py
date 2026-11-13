@@ -640,3 +640,9 @@ def test_explicit_reschedule_after_trip_change_clarification_hands_off(tmp_path)
     assert result["needs_human"] is True
     assert "不连接 PMS" in result["answer"]
     assert agent.ticket_service.list_tickets(guest_id="CUST-001") == []
+
+
+def test_colloquial_cancellation_policy_question_is_read_only_not_transaction():
+    result = classify_by_rules("我的订单可以取消嘛")
+    assert result["intent"] == "cancellation_policy_inquiry"
+    assert result["sub_intent"] == "booking_cancellation_policy"
