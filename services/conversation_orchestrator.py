@@ -55,6 +55,8 @@ class ConversationOrchestrator:
         if action == "booking_policy_lookup":
             return self._resolve_booking(message, principal, context, route, "policy")
         if action == "service_ticket_request":
+            if route.get("sub_intent") == "merchant_unable_to_fulfill":
+                return self._merchant_unable_to_fulfill(message, principal, context, route)
             return self._service_ticket_request(message, principal, context, route)
         if action == "service_ticket_confirmation":
             return self._service_ticket_confirmation(message, principal, context, route, history)
@@ -186,10 +188,41 @@ class ConversationOrchestrator:
             "booking_lookup", data={"booking": result.get("booking"), "cancellation_policy": result.get("cancellation_policy")},
             audit_id=result.get("audit_id"))
 
+    def _merchant_unable_to_fulfill(self, message, principal, context, route):
+        pending = context.get("pending_ticket_request") or {}
+        if not pending or pending.get("sub_intent") != "merchant_unable_to_fulfill":
+            pending = {
+                "intent": "service_request",
+                "sub_intent": "merchant_unable_to_fulfill",
+                "request_text": str(message),
+                "issue_type": "MERCHANT_COMPLAINT",
+            }
+            context["pending_ticket_request"] = pending
+        return self._service_ticket_request(message, principal, context, route)
+
+    def _trip_change_clarification(self, message, context, route):
+        context["pending_action"] = "clarify_trip_change"
+        context["pending_trip_change_text"] = str(message)
+        return self._simple(
+            route, "needs_clarification",
+            "我理解您的行程发生了变化。您希望取消订单并申请退款，还是希望调整入住日期？目前系统不会直接修改订单或执行退款。",
+            "clarify_trip_change", clarification=True,
+        )
+
     def _transaction(self, message, principal, context, route, history=None):
         history = history or []
         sub = route.get("sub_intent")
         current = context.get("current_operation") or {}
+        if sub == "clarify_trip_change":
+            return self._trip_change_clarification(message, context, route)
+        if sub == "booking_change_handoff":
+            context["pending_action"] = None
+            context["pending_trip_change_text"] = None
+            return self._simple(
+                route, "booking_change_handoff",
+                "已了解您希望调整入住日期。当前演示版本不连接 PMS，不能直接修改订单；请联系工作人员核实可调整日期、房态及可能产生的费用。",
+                "booking_change_handoff", needs_human=True,
+            )
         if sub == "withdraw_cancel_request":
             operations = context.get("booking_operations") or []
             prior = next((item for item in reversed(operations)
