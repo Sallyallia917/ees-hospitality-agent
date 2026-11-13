@@ -493,6 +493,10 @@ def test_guest_can_withdraw_submitted_cancellation_request_without_changing_book
     prompt = agent.handle_booking_query(
         "我要取消订单", principal=principal(), context=context,
     )
+    if prompt.get("action") == "select_booking_for_transaction":
+        prompt = agent.handle_booking_query(
+            "第一笔", principal=principal(), context=context,
+        )
     assert prompt["status"] == "awaiting_confirmation"
     created = agent.handle_booking_query(
         "确认", principal=principal(), context=context,
@@ -514,7 +518,9 @@ def test_guest_withdrawal_after_assignment_requires_human_review(tmp_path):
     agent = ConversationOrchestrator(BookingService(), tickets)
     context = {}
 
-    agent.handle_booking_query("我要取消订单", principal=principal(), context=context)
+    prompt = agent.handle_booking_query("我要取消订单", principal=principal(), context=context)
+    if prompt.get("action") == "select_booking_for_transaction":
+        prompt = agent.handle_booking_query("第一笔", principal=principal(), context=context)
     created = agent.handle_booking_query("确认", principal=principal(), context=context)
     ticket_id = created["data"]["ticket"]["ticket_id"]
     assigned = tickets.update_ticket(ticket_id, "ASSIGNED", actor="staff")
