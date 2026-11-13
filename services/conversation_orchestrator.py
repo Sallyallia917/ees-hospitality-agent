@@ -362,12 +362,28 @@ class ConversationOrchestrator:
 
     def _ticket_status_lookup(self, principal, route):
         rows = self.ticket_service.list_active_tickets(
-            guest_id=principal.customer_id, limit=10
+            guest_id=principal.customer_id, limit=50
         )
+        issue_types = {
+            "refund_status": {"CANCELLATION_REFUND", "BOOKING_ERROR"},
+            "maintenance_status": {"ROOM_MAINTENANCE"},
+            "cleaning_status": {"ROOM_CLEANING"},
+            "invoice_status": {"INVOICE"},
+            "complaint_status": {"MERCHANT_COMPLAINT", "SERVICE_COMPLAINT", "FACILITY_COMPLAINT", "HYGIENE_COMPLAINT"},
+        }
+        target_types = issue_types.get(route.get("sub_intent"))
+        if target_types:
+            rows = [item for item in rows if item.get("issue_type") in target_types]
         if not rows:
+            target_label = {
+                "refund_status": "退款", "maintenance_status": "维修",
+                "cleaning_status": "保洁", "invoice_status": "发票",
+                "complaint_status": "投诉",
+            }.get(route.get("sub_intent"))
+            message = (f"目前没有查询到您名下仍在处理中的{target_label}工单。" if target_label
+                       else "目前没有查询到您名下仍在处理中的服务工单。")
             return self._simple(
-                route, "no_active_tickets",
-                "目前没有查询到您名下仍在处理中的服务工单。如果您刚提交过申请，可以稍后再查；如需反馈新问题，可以直接告诉我。",
+                route, "no_active_tickets", message + "如果您刚提交过申请，可以稍后再查；如需反馈新问题，可以直接告诉我。",
                 "ticket_status_lookup", data={"tickets": []},
             )
         labels = {
@@ -468,6 +484,36 @@ class ConversationOrchestrator:
 
     def _service_ticket_request(self, message, principal, context, route):
         pending = context.get("pending_ticket_request") or {}
+        if route.get("sub_intent") == "append_ticket_note":
+            last = context.get("last_ticket_context") or {}
+            if last.get("ticket_id"):
+                context["pending_action"] = "collect_ticket_note"
+                return self._simple(route, "needs_clarification",
+                    f"您之前反馈的工单 {last['ticket_id']} 仍可补充信息。请告诉我这次需要补充的具体情况。",
+                    "collect_ticket_note", clarification=True,
+                    data={"ticket_id": last["ticket_id"]})
+            return self._simple(route, "needs_clarification",
+                "请告诉我需要补充的具体问题，或描述订单中的问题，我会先帮您查找已有工单。",
+                "clarify_ticket_note", clarification=True)
+        if route.get("sub_intent") == "append_ticket_note_content" or context.get("pending_action") == "collect_ticket_note":
+            last = context.get("last_ticket_context") or {}
+            ticket_id = last.get("ticket_id")
+            if not ticket_id:
+                context["pending_action"] = None
+                return self._simple(route, "needs_clarification",
+                    "没有找到可补充的工单，请重新描述问题。", "ticket_note_context_missing", clarification=True)
+            result = self.ticket_service.append_ticket_note(
+                ticket_id=ticket_id, guest_id=principal.customer_id, note=message
+            )
+            context["pending_action"] = None
+            if not result.get("ok"):
+                return self._simple(route, "ticket_note_failed",
+                    "暂时无法将补充内容写入原工单，未创建新工单。请稍后重试或联系工作人员。",
+                    "ticket_note_failed", needs_human=True, data={"ticket_id": ticket_id, "error": result.get("error")})
+            item = result["ticket"]
+            return self._simple(route, "ticket_note_added",
+                f"已将您的补充情况记录到原工单 {ticket_id}，工单状态保持为 {item['status']}，没有重复创建工单。",
+                "ticket_note_added", needs_human=True, data={"ticket": item})
         if context.get("pending_action") == "collect_invoice_details":
             pending["details"] = self._parse_invoice_fields(
                 message, pending.get("details") if isinstance(pending.get("details"), dict) else {}
@@ -531,6 +577,11 @@ class ConversationOrchestrator:
             guest_id=principal.customer_id,
         )
         if active:
+            context["last_ticket_context"] = {
+                "ticket_id": active.get("ticket_id"),
+                "booking_id": booking_id,
+                "issue_type": active.get("issue_type"),
+            }
             context["pending_ticket_request"] = None
             context["pending_ticket_booking_id"] = None
             context["pending_action"] = None
@@ -629,6 +680,11 @@ class ConversationOrchestrator:
             return self._simple(route, "ticket_creation_failed", "工单创建失败，未执行任何现场服务或票据操作，请联系工作人员。",
                                 "ticket_creation_failed", needs_human=True)
         item = ticket["ticket"]
+        context["last_ticket_context"] = {
+            "ticket_id": item.get("ticket_id"),
+            "booking_id": booking_id,
+            "issue_type": item.get("issue_type"),
+        }
         context["pending_ticket_request"] = None
         context["pending_ticket_booking_id"] = None
         context["pending_action"] = None
