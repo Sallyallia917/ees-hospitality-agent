@@ -590,3 +590,46 @@ def test_merchant_unable_to_fulfill_creates_complaint_ticket_after_confirmation(
     assert created["status"] == "ticket_created"
     assert created["data"]["ticket"]["issue_type"] == "MERCHANT_COMPLAINT"
     assert created["needs_human"] is True
+
+
+def test_ticket_progress_lookup_includes_terminal_statuses(tmp_path):
+    tickets = TicketService(tmp_path / "terminal-ticket-status.sqlite3")
+    created = tickets.create_ticket(
+        "CUST-001", "空调维修", "MAINTENANCE",
+        booking_id="DEMO-BOOKING-2001",
+    )
+    ticket_id = created["ticket"]["ticket_id"]
+    closed = tickets.update_ticket(ticket_id, "CANCELLED", actor="staff", note="已取消")
+    assert closed["ok"]
+
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    result = agent.handle_booking_query(
+        "空调维修进度如何", principal=principal(), context={}
+    )
+    assert result["status"] == "active_tickets_found"
+    assert result["data"]["tickets"][0]["status"] == "CANCELLED"
+    assert "已取消" in result["answer"]
+
+
+def test_privacy_infringement_is_safety_but_not_mislabelled_room_entry():
+    result = classify_by_rules("保洁员侵犯我的隐私")
+    assert result["intent"] == "safety_incident"
+    assert result["sub_intent"] == "safety"
+
+
+def test_explicit_reschedule_after_trip_change_clarification_hands_off(tmp_path):
+    agent = ConversationOrchestrator(
+        BookingService(), TicketService(tmp_path / "reschedule-handoff.sqlite3")
+    )
+    context = {}
+    agent.handle_booking_query(
+        "行程有变，住不了了", principal=principal(), context=context
+    )
+    result = agent.handle_booking_query(
+        "我想改期", principal=principal(), context=context
+    )
+    assert result["status"] == "booking_change_handoff"
+    assert result["needs_human"] is True
+    assert "不连接 PMS" in result["answer"]
+    assert tickets_count := agent.ticket_service.list_tickets(guest_id="CUST-001")
+    assert tickets_count == []
