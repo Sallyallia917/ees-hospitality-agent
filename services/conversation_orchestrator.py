@@ -195,7 +195,7 @@ class ConversationOrchestrator:
                 "intent": "service_request",
                 "sub_intent": "merchant_unable_to_fulfill",
                 "request_text": str(message),
-                "issue_type": "MERCHANT_COMPLAINT",
+                "issue_type": "BOOKING_ERROR",
             }
             context["pending_ticket_request"] = pending
         return self._service_ticket_request(message, principal, context, route)
@@ -722,6 +722,8 @@ class ConversationOrchestrator:
         intent = pending.get("intent")
         category = {"booking_issue": "TRANSACTION_ORDER", "invoice_request": "BILLING_DOCUMENT",
                     "complaint": "COMPLAINT_EXPERIENCE", "service_request": "STAY_SERVICE"}.get(intent, "CONSULTATION_OTHER")
+        if pending.get("issue_type") == "BOOKING_ERROR":
+            category = "TRANSACTION_ORDER"
         operation_id = pending.setdefault("operation_id", str(uuid.uuid4()))
         ticket = self.ticket_service.create_ticket(
             guest_id=principal.customer_id, booking_id=booking_id, category=category,
