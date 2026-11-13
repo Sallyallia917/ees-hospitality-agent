@@ -483,3 +483,46 @@ def test_privacy_intrusion_and_direct_room_entry_are_safety_incidents():
         result = classify_by_rules(phrase)
         assert result["intent"] == "safety_incident"
         assert result["sub_intent"] == "unauthorized_entry"
+
+
+def test_guest_can_withdraw_submitted_cancellation_request_without_changing_booking(tmp_path):
+    tickets = TicketService(tmp_path / "withdraw-cancel.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+
+    prompt = agent.handle_booking_query(
+        "我要取消订单", principal=principal(), context=context,
+    )
+    assert prompt["status"] == "awaiting_confirmation"
+    created = agent.handle_booking_query(
+        "确认", principal=principal(), context=context,
+    )
+    assert created["status"] == "ticket_created"
+    ticket_id = created["data"]["ticket"]["ticket_id"]
+
+    withdrawn = agent.handle_booking_query(
+        "不取消了，要正常入住", principal=principal(), context=context,
+    )
+    assert withdrawn["status"] == "request_withdrawn"
+    assert withdrawn["data"]["ticket"]["ticket_id"] == ticket_id
+    assert withdrawn["data"]["ticket"]["status"] == "CANCELLED"
+    assert "不会修改真实订单状态" in withdrawn["answer"]
+
+
+def test_guest_withdrawal_after_assignment_requires_human_review(tmp_path):
+    tickets = TicketService(tmp_path / "withdraw-assigned.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+
+    agent.handle_booking_query("我要取消订单", principal=principal(), context=context)
+    created = agent.handle_booking_query("确认", principal=principal(), context=context)
+    ticket_id = created["data"]["ticket"]["ticket_id"]
+    assigned = tickets.update_ticket(ticket_id, "ASSIGNED", actor="staff")
+    assert assigned["ok"]
+
+    result = agent.handle_booking_query(
+        "不取消了，要正常入住", principal=principal(), context=context,
+    )
+    assert result["status"] == "withdrawal_requires_human"
+    assert result["data"]["ticket_id"] == ticket_id
+    assert tickets.get_ticket(ticket_id, guest_id="CUST-001")["ticket"]["status"] == "ASSIGNED"
