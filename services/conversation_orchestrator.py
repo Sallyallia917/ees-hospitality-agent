@@ -190,6 +190,35 @@ class ConversationOrchestrator:
         history = history or []
         sub = route.get("sub_intent")
         current = context.get("current_operation") or {}
+        if sub == "withdraw_cancel_request":
+            operations = context.get("booking_operations") or []
+            prior = next((item for item in reversed(operations)
+                          if isinstance(item, dict)
+                          and item.get("operation_type") == "cancel_or_refund"
+                          and item.get("ticket_id")), None)
+            if not prior:
+                return self._simple(route, "withdrawal_context_missing",
+                    "没有找到可撤回的取消申请记录。请提供订单信息，或联系工作人员核实。",
+                    "withdrawal_context_missing", clarification=True)
+            result = self.ticket_service.withdraw_guest_ticket(
+                prior["ticket_id"], principal.customer_id,
+                note="住客表示不再取消订单，希望正常入住",
+            )
+            if result.get("ok"):
+                prior["status"] = "withdrawn_by_guest"
+                return self._simple(route, "request_withdrawn",
+                    f"已撤回取消申请工单 {prior['ticket_id']}，该工单已标记为已取消。请注意：当前演示系统不会修改真实订单状态，请以原预订渠道或工作人员的确认结果为准。",
+                    "withdraw_cancel_request", needs_human=True,
+                    data={"ticket": result["ticket"], "booking_id": prior.get("booking_id")})
+            if result.get("error") == "manual_review_required":
+                return self._simple(route, "withdrawal_requires_human",
+                    f"取消申请工单 {prior['ticket_id']} 已进入{result.get('status')}阶段，无法自动撤回。我已识别到您希望继续入住的意愿，请联系工作人员尽快核实能否停止取消流程。",
+                    "withdrawal_human_handoff", needs_human=True,
+                    data={"ticket_id": prior["ticket_id"], "status": result.get("status")})
+            return self._simple(route, "withdrawal_failed",
+                "暂时无法核验原取消申请，未更改工单状态。请联系工作人员处理。",
+                "withdrawal_failed", needs_human=True,
+                data={"ticket_id": prior["ticket_id"], "error": result.get("error")})
         if sub == "reject_transaction" and current.get("operation_type") == "cancel_or_refund" and current.get("stage") == "awaiting_confirmation":
             completed = complete_operation(context, "cancelled_by_user", user_confirmed=False)
             return self._simple(route, "cancelled_by_user", "好的，已停止本次取消/退款申请，没有执行任何订单操作。您仍可继续处理其他订单。",
