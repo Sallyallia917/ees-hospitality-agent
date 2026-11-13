@@ -446,12 +446,16 @@ class ConversationOrchestrator:
             fields["invoice_type"] = "PERSONAL"
             fields.pop("tax_id", None)
             fields.pop("tax_id_invalid", None)
-        elif fields.get("invoice_type") == "PERSONAL" and any(
-            token in text for token in ("姓名", "抬头")
-        ):
-            name_match = re.search(r"(?:姓名|抬头)\s*[:：为]?\s*([^，,；;\s]+)", text)
+        elif fields.get("invoice_type") == "PERSONAL":
+            name_match = re.search(
+                r"(?:姓名|抬头)\\s*[:：为]?\\s*([^，,；;\\s]+)", text
+            )
             if name_match:
                 fields["title"] = name_match.group(1).strip()
+            elif not fields.get("title") and re.fullmatch(r"[\\u4e00-\\u9fff]{2,20}", text):
+                # During an active personal-invoice collection step, a bare Chinese
+                # name answers the outstanding title field.
+                fields["title"] = text
 
         return fields
 
