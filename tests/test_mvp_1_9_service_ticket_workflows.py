@@ -532,3 +532,61 @@ def test_guest_withdrawal_after_assignment_requires_human_review(tmp_path):
     assert result["status"] == "withdrawal_requires_human"
     assert result["data"]["ticket_id"] == ticket_id
     assert tickets.get_ticket(ticket_id, guest_id="CUST-001")["ticket"]["status"] == "ASSIGNED"
+
+
+def test_trip_change_language_is_clarified_instead_of_sent_to_rag_or_refund():
+    for phrase in ("计划有变，去不了了", "行程有变，住不了了"):
+        result = classify_by_rules(phrase)
+        assert result["intent"] == "transaction_request"
+        assert result["sub_intent"] == "clarify_trip_change"
+
+
+def test_trip_change_clarification_separates_cancel_from_reschedule(tmp_path):
+    agent = ConversationOrchestrator(
+        BookingService(), TicketService(tmp_path / "trip-change.sqlite3")
+    )
+    context = {}
+    first = agent.handle_booking_query(
+        "计划有变，去不了了", principal=principal(), context=context
+    )
+    assert first["status"] == "needs_clarification"
+    assert context["pending_action"] == "clarify_trip_change"
+
+    cancel = agent.handle_booking_query(
+        "取消订单，申请退款", principal=principal(), context=context
+    )
+    assert cancel["status"] == "awaiting_confirmation"
+    assert context["pending_action"] == "confirm_transaction"
+
+
+def test_free_cancellation_phrase_confirms_only_in_transaction_confirmation_context():
+    context = {"pending_action": "confirm_transaction"}
+    result = classify_by_rules("免费取消", context=context)
+    assert result["intent"] == "transaction_request"
+    assert result["sub_intent"] == "confirm_transaction"
+
+    outside = classify_by_rules("免费取消", context={})
+    assert outside["intent"] != "transaction_request" or outside["sub_intent"] != "confirm_transaction"
+
+
+def test_merchant_unable_to_fulfill_creates_complaint_ticket_after_confirmation(tmp_path):
+    tickets = TicketService(tmp_path / "merchant-fulfillment.sqlite3")
+    agent = ConversationOrchestrator(BookingService(), tickets)
+    context = {}
+    first = agent.handle_booking_query(
+        "商家没房接待了", principal=principal(), context=context
+    )
+    if first["action"] == "select_booking_for_service_ticket":
+        first = agent.handle_booking_query(
+            "第一笔", principal=principal(), context=context
+        )
+    assert first["status"] == "awaiting_ticket_confirmation"
+    assert first["data"]["issue_type"] == "MERCHANT_COMPLAINT"
+    assert tickets.list_tickets(guest_id="CUST-001") == []
+
+    created = agent.handle_booking_query(
+        "确认", principal=principal(), context=context
+    )
+    assert created["status"] == "ticket_created"
+    assert created["data"]["ticket"]["issue_type"] == "MERCHANT_COMPLAINT"
+    assert created["needs_human"] is True
